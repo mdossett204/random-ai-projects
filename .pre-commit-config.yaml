@@ -1,0 +1,35 @@
+# .pre-commit-config.yaml
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+    -   id: check-yaml
+    -   id: end-of-file-fixer
+    -   id: trailing-whitespace
+    -   id: check-json
+    -   id: check-merge-conflict
+    -   id: check-toml
+    -   id: requirements-txt-fixer
+#- repo: https://github.com/psf/black-pre-commit-mirror
+#  rev: 24.10.0  # Use the latest stable release of black
+#  hooks:
+#    - id: black
+#      language: python
+#      args: ["--line-length", "120"]  # Optional: Adjust line length
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.14.1  # Use the latest stable release of mypy
+  hooks:
+    - id: mypy
+      language: python
+      args: ["--ignore-missing-imports"]  # Optional: Ignore missing imports
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.9.1
+  hooks:
+    - id: ruff
+      language: python
+      types_or: [python, pyi]
+      args: [--fix, --line-length, "120"]
+    - id: ruff-format
+      language: python
+      types_or: [python, pyi]
+      args: [--line-length, "120"]
