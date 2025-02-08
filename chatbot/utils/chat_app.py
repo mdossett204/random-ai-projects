@@ -3,9 +3,9 @@ from langgraph.graph import START, StateGraph
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 
-from chatbot.configs.message_config import State
-from chatbot.configs.llama_model import model, trimmer
-from chatbot.configs.message_config import prompt_template
+from chatbot.utils.message_config import State
+from chatbot.utils.llama_model import model, trimmer
+from chatbot.utils.message_config import prompt_template
 
 LANGUAGE: str = "English"
 CONFIG: Dict[str, Dict[str, str]] = {"configurable": {"thread_id": "options-trading-chat"}}

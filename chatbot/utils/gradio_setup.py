@@ -1,6 +1,6 @@
 import gradio as gr
 
-from chatbot.configs.chat_app import chat
+from chatbot.utils.chat_app import chat
 
 HEADER_HTML: str = "<h1 style='color: #282c34; font-family: Arial;'>Welcome to your basic options trading AI advisor!"
 

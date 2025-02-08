@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 
-from configs.gradio_setup import demo
+from utils.gradio_setup import demo
 
 
 load_dotenv()
