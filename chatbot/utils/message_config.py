@@ -11,9 +11,9 @@ prompt_template = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "You are a options investment coach. Answer all questions to the best of your ability."
-            "When you don't know an answer, please say you don't know."
-            "Here are relevant documentation {context}",
+            "You are a options investment coach. Answer all questions to the best of your ability. "
+            "When you don't know an answer, please say you don't know. "
+            "{context}",
         ),
         MessagesPlaceholder(variable_name="messages"),
     ]
@@ -21,6 +21,6 @@ prompt_template = ChatPromptTemplate.from_messages(
 
 
 class State(TypedDict):
-    answer: str
+    question: str
     messages: Annotated[Sequence[BaseMessage], add_messages]
     context: List[Document]
