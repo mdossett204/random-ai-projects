@@ -10,14 +10,14 @@ MODEL_NAME = "sentence-transformers/all-mpnet-base-v2"
 EMBEDDINGS_MODEL = HuggingFaceEmbeddings(model_name=MODEL_NAME)
 
 
-async def load_web_pages(urls: List[str], soup_class: str, separator: str, replacer: List[str]) -> List[str]:
+def load_web_pages(urls: List[str], soup_class: str, separator: str, replacer: List[str]) -> List[str]:
     web_loader = WebBaseLoader(
         web_paths=urls,
         bs_kwargs={"parse_only": bs4.SoupStrainer(class_=soup_class)},
         bs_get_text_kwargs={"separator": separator, "strip": True},
     )
     docs = []
-    async for doc in web_loader.alazy_load():
+    for doc in web_loader.lazy_load():
         content = doc.page_content
         for replace in replacer:
             content.replace(replace, "")
@@ -39,7 +39,7 @@ def split_pages(
     return text_splitter.create_documents(docs)
 
 
-async def query_relevant_text(docs: List[Document], query: str, top_n: int) -> List[Document]:
+def query_relevant_text(docs: List[Document], query: str, top_n: int) -> List[Document]:
     vector_database = Chroma.from_documents(docs, EMBEDDINGS_MODEL)
-    relevant_docs = await vector_database.asimilarity_search(query=query, k=top_n)
+    relevant_docs = vector_database.similarity_search(query=query, k=top_n)
     return relevant_docs

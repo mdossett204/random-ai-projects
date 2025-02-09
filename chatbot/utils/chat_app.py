@@ -14,15 +14,24 @@ CONFIG: Dict[str, Dict[str, str]] = {"configurable": {"thread_id": "options-trad
 workflow = StateGraph(state_schema=State)
 
 
-async def call_model(state: State):
+def retrieve(state: State):
     trimmed_messages = trimmer.invoke(state["messages"])
-    prompt = prompt_template.invoke({"messages": trimmed_messages, "context": state["context"]})
-    response = await model.ainvoke(prompt)
+    # prompt = prompt_template.invoke({"messages": trimmed_messages, "context": state["context"]})
+    retrieved_docs = get_relevant_documents(trimmed_messages[-1].content)
+    return {"context": retrieved_docs}
+
+
+def call_model(state: State):
+    trimmed_messages = trimmer.invoke(state["messages"])
+    docs_content = "".join(doc.page_content for doc in state["context"])
+    prompt = prompt_template.invoke({"messages": trimmed_messages, "context": docs_content})
+    response = model.invoke(prompt)
     return {"messages": [AIMessage(content=response)]}
 
 
-workflow.add_edge(START, "model")
-workflow.add_node("model", call_model)
+workflow.add_sequence([retrieve, call_model])
+workflow.add_edge(START, "retrieve")
+# workflow.add_node("model", call_model)
 
 memory = MemorySaver()
 app = workflow.compile(checkpointer=memory)
@@ -30,9 +39,9 @@ app = workflow.compile(checkpointer=memory)
 
 async def chat(input_text: str):
     input_messages = [HumanMessage(input_text)]
-    context = await get_relevant_documents(input_text)
+    # context = await get_relevant_documents(input_text)
     async for chunk, metadata in app.astream(
-        {"messages": input_messages, "context": context},
+        {"messages": input_messages},
         CONFIG,
         stream_mode="messages",
     ):

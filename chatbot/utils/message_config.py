@@ -1,9 +1,11 @@
 from typing import Sequence
+from typing import List
 from typing_extensions import Annotated, TypedDict
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
+from langchain_core.documents.base import Document
 
 prompt_template = ChatPromptTemplate.from_messages(
     [
@@ -19,5 +21,6 @@ prompt_template = ChatPromptTemplate.from_messages(
 
 
 class State(TypedDict):
+    answer: str
     messages: Annotated[Sequence[BaseMessage], add_messages]
-    context: str
+    context: List[Document]
