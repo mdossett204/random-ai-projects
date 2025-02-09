@@ -1,5 +1,11 @@
+beautifulsoup4==4.13.3
+chroma-hnswlib==0.7.6
+chromadb==0.6.3
 gradio==5.14.0
+langchain-chroma==0.2.1
+langchain-community==0.3.17
 langchain-core==0.3.33
+langchain-huggingface==0.1.2
 langchain-ollama==0.2.3
 langgraph==0.2.69
 python-dotenv==1.0.1

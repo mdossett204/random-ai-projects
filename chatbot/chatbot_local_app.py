@@ -1,6 +1,10 @@
 from dotenv import load_dotenv
+import os
 
-from configs.gradio_setup import demo
+os.environ["USER_AGENT"] = "custom_agent"
+
+
+from utils.gradio_setup import demo
 
 
 load_dotenv()
