@@ -1,4 +1,4 @@
-from chatbot.utils.web_loader import load_web_pages
+from chatbot.utils.document_helper import load_web_pages, split_pages
 import asyncio
 
 INVESTOPEDIA_URLS = [
@@ -6,15 +6,18 @@ INVESTOPEDIA_URLS = [
     "https://www.investopedia.com/terms/c/coveredcall.asp",
 ]
 INVESTOPEDIA_CLASS = "loc article-content"
-SEPARATOR = "\n"
+SEPARATOR = " "
+REPLACER = ["\xa0"]
+CHUNK_SIZE = 500
+OVERLAP = 0
 
 
 async def get_documents():
-    result = await load_web_pages(urls=INVESTOPEDIA_URLS, soup_class=INVESTOPEDIA_CLASS, separator=SEPARATOR)
-    for doc in result:
-        print(doc.metadata)
-        print(len(doc.page_content))
-    return result
+    web_pages = await load_web_pages(
+        urls=INVESTOPEDIA_URLS, soup_class=INVESTOPEDIA_CLASS, separator=SEPARATOR, replacer=REPLACER
+    )
+    split_chunks = split_pages(web_pages, CHUNK_SIZE, OVERLAP)
+    return split_chunks
 
 
 if __name__ == "__main__":
