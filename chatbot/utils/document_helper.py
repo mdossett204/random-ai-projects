@@ -3,6 +3,11 @@ import bs4
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_core.documents.base import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_chroma import Chroma
+
+MODEL_NAME = "sentence-transformers/all-mpnet-base-v2"
+EMBEDDINGS_MODEL = HuggingFaceEmbeddings(model_name=MODEL_NAME)
 
 
 async def load_web_pages(urls: List[str], soup_class: str, separator: str, replacer: List[str]) -> List[str]:
@@ -32,3 +37,9 @@ def split_pages(
         is_separator_regex=False,
     )
     return text_splitter.create_documents(docs)
+
+
+async def query_relevant_text(docs: List[Document], query: str, top_n: int) -> List[Document]:
+    vector_database = Chroma.from_documents(docs, EMBEDDINGS_MODEL)
+    relevant_docs = await vector_database.asimilarity_search(query=query, k=top_n)
+    return relevant_docs
