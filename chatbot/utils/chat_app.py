@@ -27,7 +27,7 @@ def call_model(state: State):
         {"messages": trimmed_messages, "context": docs_content, "question": state["question"]}
     )
     response = model.invoke(prompt)
-    return {"messages": [AIMessage(content=response)]}
+    return {"messages": [response]}
 
 
 workflow.add_sequence([retrieve, call_model])
@@ -37,12 +37,8 @@ memory = MemorySaver()
 app = workflow.compile(checkpointer=memory)
 
 
-async def chat(input_text: str):
+def chat(input_text: str):
     input_messages = [HumanMessage(input_text)]
-    async for chunk, metadata in app.astream(
-        {"messages": input_messages, "question": input_text},
-        CONFIG,
-        stream_mode="messages",
-    ):
-        if isinstance(chunk, AIMessage):
-            yield chunk.content
+    output_message = app.invoke({"messages": input_messages, "question": input_text}, CONFIG)["messages"][-1]
+    if isinstance(output_message, AIMessage):
+        return output_message.content
