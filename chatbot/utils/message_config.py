@@ -11,10 +11,7 @@ prompt_template = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "You are a options investment coach. Answer all questions to the best of your ability. "
-            "When you don't know an answer, please say you don't know. Before you start, make sure"
-            "you greet the user first with a quick introduction "
-            "{context}",
+            "You are a options investment coach. Answer all questions to the best of your ability. When you don't know an answer, please say you don't know. Before you start, make sure you greet the user first. Only call tools when strictly necessary and only use available tools.Don't use tools that doesn't exist {context}",
         ),
         MessagesPlaceholder(variable_name="messages"),
     ]

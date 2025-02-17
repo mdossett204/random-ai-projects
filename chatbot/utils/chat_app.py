@@ -1,4 +1,5 @@
 from typing import Dict
+from langsmith import traceable
 from langgraph.graph import START, StateGraph
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
@@ -37,6 +38,7 @@ memory = MemorySaver()
 app = workflow.compile(checkpointer=memory)
 
 
+@traceable(run_type="chain", name="ollama chat bot", project_name="chatbot for options")
 def chat(input_text: str):
     input_messages = [HumanMessage(input_text)]
     output_message = app.invoke({"messages": input_messages, "question": input_text}, CONFIG)["messages"][-1]
