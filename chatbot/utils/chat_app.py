@@ -1,11 +1,12 @@
 from typing import Dict
 from langsmith import traceable
-from langgraph.graph import START, StateGraph
+from langgraph.graph import START, StateGraph, END
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.prebuilt import ToolNode
 
 from chatbot.utils.message_config import State
-from chatbot.utils.llama_model import model, trimmer
+from chatbot.utils.llama_model import model, trimmer, tools
 from chatbot.utils.message_config import prompt_template
 from chatbot.utils.document_helper import query_relevant_text
 
@@ -14,6 +15,8 @@ CONFIG: Dict[str, Dict[str, str]] = {"configurable": {"thread_id": "options-trad
 TOP_N = 3
 
 workflow = StateGraph(state_schema=State)
+
+tool_node = ToolNode(tools)
 
 
 def retrieve(state: State):
@@ -31,8 +34,25 @@ def call_model(state: State):
     return {"messages": [response]}
 
 
-workflow.add_sequence([retrieve, call_model])
+def should_continue(state: State):
+    last_message = state["messages"][-1]
+    question = state["question"]
+    if last_message.tool_calls:
+        if "ticker" in question or "stock" in question:
+            return "tools"
+        return "llm"
+    return END
+
+
+# workflow.add_sequence([retrieve, call_model])
+workflow.add_node("llm", call_model)
+workflow.add_node("tools", tool_node)
+workflow.add_node("retrieve", retrieve)
+
 workflow.add_edge(START, "retrieve")
+workflow.add_edge("retrieve", "llm")
+workflow.add_conditional_edges("llm", should_continue, ["tools", END, "llm"])
+workflow.add_edge("tools", "llm")
 
 memory = MemorySaver()
 app = workflow.compile(checkpointer=memory)
