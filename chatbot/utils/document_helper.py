@@ -28,6 +28,7 @@ SEPARATOR = " "
 REPLACER = ["\xa0"]
 CHUNK_SIZE = 500
 OVERLAP = 0
+SCORE_THRESHOLD: float = 0.5
 
 
 def load_web_pages(urls: List[str], soup_class: str, separator: str, replacer: List[str]) -> List[str]:
@@ -67,5 +68,5 @@ VECTOR_DATABASE = Chroma.from_documents(split_chunks, EMBEDDINGS_MODEL)
 
 
 def query_relevant_text(query: str, top_n: int) -> List[Document]:
-    relevant_docs = VECTOR_DATABASE.similarity_search(query=query, k=top_n)
-    return relevant_docs
+    query_results = VECTOR_DATABASE.similarity_search_with_relevance_scores(query=query, k=top_n)
+    return [doc for doc, score in query_results if score >= SCORE_THRESHOLD]
