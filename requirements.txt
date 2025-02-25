@@ -8,6 +8,11 @@ langchain-core==0.3.33
 langchain-huggingface==0.1.2
 langchain-ollama==0.2.3
 langgraph==0.2.69
+langgraph-checkpoint-sqlite==2.0.5
+langgraph-cli==0.1.71
 python-dotenv==1.0.1
+tavily-python==0.5.1
 transformers==4.48.2
+trustcall==0.0.37
+wikipedia==1.4.0
 yfinance==0.2.53
