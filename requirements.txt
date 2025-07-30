@@ -9,5 +9,8 @@ langchain-huggingface==0.1.2
 langchain-ollama==0.2.3
 langgraph==0.2.69
 python-dotenv==1.0.1
+selenium==4.34.2
+selenium-stealth==1.0.6
 transformers==4.48.2
+webdriver-manager==4.0.2
 yfinance==0.2.53
