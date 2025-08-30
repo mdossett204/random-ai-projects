@@ -26,5 +26,5 @@ This tool is designed for **local use only**. Download and run on your machine t
 git clone <to be added>
 cd <to be added>
 pip install -r requirements.txt
-python chat_app.py
+python gradio_chat_app.py
 ```

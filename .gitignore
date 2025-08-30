@@ -174,3 +174,7 @@ cython_debug/
 *env*
 
 *.gradio*
+*chat_conversation*
+*html
+*.csv
+*.png
