@@ -177,4 +177,7 @@ cython_debug/
 *chat_conversation*
 *html
 *.csv
+*DS_Store
+*simple_agents
+
 *.png
