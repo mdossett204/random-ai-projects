@@ -162,7 +162,7 @@ def create_interface():
         4. Open: http://127.0.0.1:7860
         5. Use the chat interface!
 
-        **📝 Blog**: [How to Use OpenAI API for Model Selection](your-blog-link-here)
+        **📝 Blog**: [Break Free from ChatGPT's Model Limitations](https://mindy-dossett.com/2025/08/31/custom-gpt-chat-app/)
         """)
 
         with gr.Row():
@@ -186,7 +186,7 @@ def create_interface():
                     value=500,
                     minimum=16,
                     maximum=5000,
-                    info="Maximum tokens in response (10-5000)",
+                    info="Maximum tokens in response (16-5000)",
                 )
                 temperature = gr.Number(
                     label="Temperature",
