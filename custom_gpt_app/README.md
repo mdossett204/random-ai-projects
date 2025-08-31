@@ -1,12 +1,8 @@
 ---
 title: OpenAI Model Chat - Local Only
 emoji: 🤖
-colorFrom: blue
-colorTo: green
-sdk: gradio
-sdk_version: 4.44.0
-app_file: app.py
-pinned: false
+sdk: gradio and openai
+app_file: gradio_chat_app.py
 license: mit
 ---
 
@@ -23,8 +19,13 @@ This tool is designed for **local use only**. Download and run on your machine t
 ## 🚀 Quick Start
 
 ```bash
-git clone <to be added>
-cd <to be added>
+git clone git@github.com:mdossett204/random-ai-projects.git
+cd custom_gpt_app
+pyenv shell 3.12
+python3 -m venv chat-env
+source chat-env/bin/activate
 pip install -r requirements.txt
-python gradio_chat_app.py
+make sure you create an .env file with OPENAPI_API_KEY
+python3 gradio_chat_app.py
+check: http://127.0.0.1:7860/
 ```
