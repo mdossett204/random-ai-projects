@@ -1,14 +1,16 @@
+from datetime import datetime
+import logging
+import os
+from typing import List, Tuple
+
+from dotenv import load_dotenv
 import gradio as gr
 import openai
-from dotenv import load_dotenv
-import os
-from datetime import datetime
-from typing import List, Tuple
-import logging
+
 
 load_dotenv(override=True)
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename="gradio_chat_app.log", level=logging.INFO)
+logging.basicConfig(filename=f"gradio_chat_app_{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.log", level=logging.INFO)
 
 
 class OpenAIChat:
@@ -16,16 +18,20 @@ class OpenAIChat:
         self.client = None
         self.conversation_history = []
 
-        # Available models with descriptions and rough cost info
         self.models = {
-            "o3-mini": "Latest O3 mini model - Fast and efficient",
-            "o3": "Latest O3 model - Most capable reasoning",
-            "gpt-4o": "GPT-4 Omni - Multimodal capabilities",
-            "gpt-4o-mini": "GPT-4 Omni Mini - Faster and cheaper",
-            "gpt-4-turbo": "GPT-4 Turbo - High performance",
-            "gpt-5": "GPT-5 - Next generation model",
-            "gpt-4": "GPT-4 - Original high-capability model",
+            "o3": "Reasoning model for complex tasks, suceeded by GPT-5",
+            "o3-mini": "A small model alterantive to o3",
+            "o4-mini": "Fast,cost efficient reasoning model, succeeded by GPT-5 mini",
+            "gpt-4o": "Fast, intelligent, flexible GPT model",
+            "gpt-4o-mini": "Fast, affordable small model for focused tasks",
+            "gpt-4.1": "GPT-4.1 - Smartest non-reasioning model",
+            "gpt-4.1-mini": "Smaller, faster version of GPT4.1.",
+            "gpt-4.1-nano": "Fastest, most cost efficient version of GPT-4.1",
+            "gpt-5": "GPT-5 - The best model for coding and agentic tasks across domains",
+            "gpt-5-mini": "GPT-5 Mini - A faster, cost-efficient version of GPT-5 for well defined tasks",
+            "gpt-5-nano": "GPT-5 Nano - Fastest, most cost efficient version of GPT-5",
         }
+        self.non_param_models = ["o3", "o3-mini", "o4-mini", "gpt-5", "gpt-5-mini", "gpt-5-nano"]
 
     def get_client(self) -> str:
         """Get OpenAI client if API key is set"""
@@ -37,14 +43,16 @@ class OpenAIChat:
             return "⚠️ API key should start with 'sk-'"
 
         try:
-            # Initialize OpenAI client
             self.client = openai.OpenAI(api_key=api_key)
+            logger.info("Initializing OpenAI client initialized... ")
             return "✅ API key configured successfully!"
         except Exception as exc:
             logging.error(f"Error initializing OpenAI client: {exc}")
             return "❌ Error setting API key."
 
-    def chat(self, message: str, model: str, history: List[Tuple[str, str]]) -> Tuple[List[Tuple[str, str]], str]:
+    def chat(
+        self, message: str, model: str, max_tokens: int, temperature: float, history: List[Tuple[str, str]]
+    ) -> Tuple[List[Tuple[str, str]], str]:
         """Send message to selected OpenAI model"""
         if not self.client:
             get_client_status = self.get_client()
@@ -55,28 +63,30 @@ class OpenAIChat:
             return history, ""
 
         try:
-            # Build messages for API
             messages = [{"role": "system", "content": "You are a helpful assistant."}]
 
-            # Add conversation history
             for user_msg, assistant_msg in history:
                 messages.append({"role": "user", "content": user_msg})
                 messages.append({"role": "assistant", "content": assistant_msg})
 
-            # Add current message
             messages.append({"role": "user", "content": message})
-
-            # Call OpenAI API
-            response = self.client.chat.completions.create(
-                model=model, messages=messages, max_tokens=50, temperature=0.5
+            if model in self.non_param_models:
+                logger.info(f"Model: {model}, Message: {message}")
+            else:
+                max_tokens = min(max(max_tokens, 16), 5000)
+                temperature = min(max(temperature, 0.0), 2.0)
+                logger.info(f"Model: {model}, Message: {message}, max token: {max_tokens}, temp: {temperature}")
+            response = self.client.responses.create(
+                model=model,
+                input=messages,
+                max_output_tokens=max_tokens if model not in self.non_param_models else None,
+                temperature=temperature if model not in self.non_param_models else None,
             )
 
-            assistant_response = response.choices[0].message.content
+            assistant_response = response.output_text.strip()
 
-            # Update history
             history.append((message, assistant_response))
 
-            # Store in conversation history for saving
             self.conversation_history = history.copy()
 
             return history, ""
@@ -85,7 +95,7 @@ class OpenAIChat:
             logging.error(f"Error during chat: {exc}")
             return history, "something went wrong, please try again."
 
-    def save_conversation(self) -> str:
+    def save_conversation(self, folder_path: str = "") -> str:
         """Save conversation to a file"""
         if not self.conversation_history:
             return "No conversation to save."
@@ -93,8 +103,14 @@ class OpenAIChat:
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"chat_conversation_{timestamp}.txt"
-
-            with open(filename, "w", encoding="utf-8") as f:
+            if folder_path.strip():
+                folder_path = folder_path.strip()
+                os.makedirs(folder_path, exist_ok=True)
+                full_path = os.path.join(folder_path, filename)
+            else:
+                full_path = filename
+            logger.info(f"Saving conversation to {full_path}")
+            with open(full_path, "w", encoding="utf-8") as f:
                 f.write(f"OpenAI Chat Conversation - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write("=" * 60 + "\n\n")
 
@@ -112,6 +128,7 @@ class OpenAIChat:
     def clear_chat(self) -> Tuple[List, str]:
         """Clear the chat history"""
         self.conversation_history = []
+        logger.info("Chat history cleared.")
         return [], ""
 
 
@@ -129,14 +146,15 @@ def create_interface():
         **🔒 Security First**:
         - Download and run locally to protect your API keys
         - Never enter real API keys in online demos
-        - Your keys stay on your machine only
+        - Your keys stay on your machine only inside .env file
 
         **🚀 Quick Setup:**
         1. Download this code
-        2. Install: `pip install gradio openai`
-        3. Run: `python app.py`
-        4. Open: http://localhost:7860
-        5. Enter your OpenAI API key
+        2. Create virtual environemnt: `pyenv shell 3.12 && python -m venv venv && source venv/bin/activate`
+        2. Install: `pip install -r requirements.txt`
+        3. Run: `python gradio_chat_app.py`
+        4. Open: http://127.0.0.1:7860
+        5. Use the chat interface!
 
         **📝 Blog**: [How to Use OpenAI API for Model Selection](your-blog-link-here)
         """)
@@ -147,20 +165,45 @@ def create_interface():
                 gr.Markdown("### 🎯 Model Selection")
                 model_dropdown = gr.Dropdown(
                     choices=list(chat_app.models.keys()),
-                    value="gpt-4o-mini",
+                    value="gpt-4.1-nano",
                     label="Select Model",
                     info="Choose your OpenAI model",
                 )
 
                 model_info = gr.Textbox(
-                    label="Model Info", value=chat_app.models["gpt-4o-mini"], interactive=False, lines=2
+                    label="Model Info", value=chat_app.models["gpt-4.1-nano"], interactive=False, lines=2
+                )
+
+                gr.Markdown("### 🎛️ Model Parameters")
+                max_tokens = gr.Number(
+                    label="Max Output Tokens",
+                    value=500,
+                    minimum=16,
+                    maximum=5000,
+                    info="Maximum tokens in response (10-5000)",
+                )
+                temperature = gr.Number(
+                    label="Temperature",
+                    value=0.0,
+                    minimum=0.0,
+                    maximum=2.0,
+                    step=0.1,
+                    info="Creativity level (0=focused, 2=creative)",
                 )
 
                 # Controls
                 gr.Markdown("### 💾 Controls")
-                save_btn = gr.Button("Save Conversation", variant="secondary")
+                with gr.Row():
+                    folder_path = gr.Textbox(
+                        label="Save Folder (optional)",
+                        placeholder="./conversations",
+                        info="Leave empty to save in current directory",
+                        scale=2,
+                    )
+                    save_btn = gr.Button("Save Conversation", variant="secondary", scale=1)
+
                 clear_btn = gr.Button("Clear Chat", variant="stop")
-                save_status = gr.Textbox(label="Save Status", interactive=False, lines=1)
+                save_status = gr.Textbox(label="Save Status", interactive=False, lines=2)
 
             with gr.Column(scale=2):
                 # Chat interface
@@ -178,40 +221,43 @@ def create_interface():
             fn=lambda model: chat_app.models.get(model, ""), inputs=[model_dropdown], outputs=[model_info]
         )
 
-        def handle_message(message, model, history):
-            new_history, error = chat_app.chat(message, model, history)
+        def handle_message(message, model, max_tokens, temperature, history):
+            new_history, error = chat_app.chat(message, model, max_tokens, temperature, history)
             return new_history, "", error, gr.update(visible=bool(error))
 
         send_btn.click(
             fn=handle_message,
-            inputs=[msg, model_dropdown, chatbot],
+            inputs=[msg, model_dropdown, max_tokens, temperature, chatbot],
             outputs=[chatbot, msg, error_display, error_display],
         )
 
         msg.submit(
             fn=handle_message,
-            inputs=[msg, model_dropdown, chatbot],
+            inputs=[msg, model_dropdown, max_tokens, temperature, chatbot],
             outputs=[chatbot, msg, error_display, error_display],
         )
 
-        save_btn.click(fn=chat_app.save_conversation, outputs=[save_status])
+        save_btn.click(fn=chat_app.save_conversation, inputs=[folder_path], outputs=[save_status])
 
         clear_btn.click(fn=chat_app.clear_chat, outputs=[chatbot, save_status])
 
         # Cost information
-        with gr.Accordion("💰 Model Pricing Info", open=False):
+        with gr.Accordion("💰 Model Pricing Info:", open=True):
             gr.Markdown("""
-            **Approximate pricing (check OpenAI's official pricing):**
-            - **o3-mini**: Most cost-effective for reasoning tasks
-            - **o3**: Premium pricing for advanced reasoning
-            - **gpt-4o-mini**: ~$0.15/$0.60 per 1M tokens (input/output)
+            **Approximate pricing (check OpenAI's official pricing [here](https://platform.openai.com/docs/pricing?latest-pricing=standard)):**
+            - **o3-mini**: $1.10/$4.40 per 1M tokens (input/output)
+            - **o3**: $2.00/$8.00 per 1M tokens (input/output)
+            - **o4-mini**: ~$1.10/$4.40 per 1M tokens (input/output)
             - **gpt-4o**: ~$2.50/$10.00 per 1M tokens (input/output)
-            - **gpt-4-turbo**: ~$10.00/$30.00 per 1M tokens (input/output)
-            - **gpt-5**: Pricing TBD
-
+            - **gpt-4o-mini**: ~$0.15/$0.60 per 1M tokens (input/output)
+            - **gpt-4.1**: ~$2.00/$8.00 per 1M tokens (input/output)
+            - **gpt-4.1-mini**: ~$0.40/$1.60 per 1M tokens (input/output)
+            - **gpt-4.1-nano**: ~$0.10/$0.40 per 1M tokens (input/output)
+            - **gpt-5**: ~$1.25/$10.00 per 1M tokens (input/output)
+            - **gpt-5-mini**: ~$0.25/$2.00 per 1M tokens (input/output)
+            - **gpt-5-nano**: ~$0.05/$0.40 per 1M tokens (input/output)
             💡 **Tip**: Start with cheaper models for testing, upgrade for complex tasks
             """)
-
     return demo
 
 
