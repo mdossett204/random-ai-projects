@@ -10,7 +10,10 @@ import openai
 
 load_dotenv(override=True)
 logger = logging.getLogger(__name__)
-logging.basicConfig(filename=f"gradio_chat_app_{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.log", level=logging.INFO)
+os.makedirs("logs", exist_ok=True)
+logging.basicConfig(
+    filename=f"logs/gradio_chat_app_{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.log", level=logging.INFO
+)
 
 
 class OpenAIChat:
