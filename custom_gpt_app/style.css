@@ -1,0 +1,138 @@
+/* OpenAI Model Selection Chat - Custom Styles */
+
+/* Main background */
+.gradio-container {
+  background: linear-gradient(135deg, #f5f3f0 0%, #ede8e3 100%) !important;
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif !important;
+}
+
+/* App background */
+.app {
+  background: transparent !important;
+}
+
+/* Blocks container */
+.block {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Headers and text */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: #1e40af !important;
+  font-weight: 600 !important;
+  font-family: "Inter", sans-serif !important;
+}
+
+/* Primary buttons */
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s ease !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #2563eb, #1e40af) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4) !important;
+}
+
+/* Secondary buttons */
+.btn-secondary {
+  background: linear-gradient(135deg, #64748b, #475569) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  color: white !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+}
+
+.btn-secondary:hover {
+  background: linear-gradient(135deg, #475569, #334155) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Stop/danger buttons */
+.btn-stop {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  font-weight: 500 !important;
+  transition: all 0.3s ease !important;
+}
+
+.btn-stop:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Input fields */
+.gr-textbox,
+.gr-dropdown,
+.gr-number {
+  border-radius: 12px !important;
+  border: 2px solid rgba(59, 130, 246, 0.2) !important;
+  transition: all 0.3s ease !important;
+  font-family: "Inter", sans-serif !important;
+}
+
+.gr-textbox:focus,
+.gr-dropdown:focus,
+.gr-number:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Chat interface */
+.chatbot {
+  border-radius: 16px !important;
+  border: 2px solid rgba(59, 130, 246, 0.1) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Chat messages */
+.message-user {
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  border-radius: 18px 18px 4px 18px !important;
+  color: white !important;
+}
+
+.message-bot {
+  background: rgba(241, 245, 249, 0.9) !important;
+  border-radius: 18px 18px 18px 4px !important;
+  border-left: 4px solid #3b82f6 !important;
+}
+
+/* Labels */
+.gr-label {
+  color: #1e40af !important;
+  font-weight: 600 !important;
+  font-family: "Inter", sans-serif !important;
+}
+
+/* Accordion */
+.accordion {
+  border: 2px solid rgba(59, 130, 246, 0.1) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Status messages */
+.success {
+  color: #059669 !important;
+  font-weight: 500 !important;
+}
+
+.error {
+  color: #dc2626 !important;
+  font-weight: 500 !important;
+}
