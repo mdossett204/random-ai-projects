@@ -138,7 +138,10 @@ class OpenAIChat:
 def create_interface():
     chat_app = OpenAIChat()
 
-    with gr.Blocks(title="OpenAI Model Selection Chat", theme=gr.themes.Soft()) as demo:
+    with open("style.css", "r") as style_file:
+        custom_css = style_file.read()
+
+    with gr.Blocks(css=custom_css, title="OpenAI Model Selection Chat", theme=gr.themes.Soft()) as demo:
         gr.Markdown("""
         # 🤖 OpenAI Model Selection Chat
 
@@ -153,7 +156,7 @@ def create_interface():
 
         **🚀 Quick Setup:**
         1. Download this code
-        2. Create virtual environemnt: `pyenv shell 3.12 && python -m venv venv && source venv/bin/activate`
+        2. Create virtual environemnt: `pyenv shell 3.12 && python -m venv chat-env && source chat-env/bin/activate`
         2. Install: `pip install -r requirements.txt`
         3. Run: `python gradio_chat_app.py`
         4. Open: http://127.0.0.1:7860
@@ -259,12 +262,12 @@ def create_interface():
             - **gpt-5**: ~$1.25/$10.00 per 1M tokens (input/output)
             - **gpt-5-mini**: ~$0.25/$2.00 per 1M tokens (input/output)
             - **gpt-5-nano**: ~$0.05/$0.40 per 1M tokens (input/output)
+
             💡 **Tip**: Start with cheaper models for testing, upgrade for complex tasks
             """)
     return demo
 
 
-# For Hugging Face Spaces deployment
 demo = create_interface()
 
 if __name__ == "__main__":
