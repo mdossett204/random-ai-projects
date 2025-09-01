@@ -28,6 +28,9 @@ python3 gradio_chat_app.py
 
 make sure you create an .env file with OPENAI_API_KEY and check out the app [here](http://127.0.0.1:7860)
 
-For a quick demo video [here](https://www.youtube.com/watch?v=4cY1tTa_TxI)
+## Wath the demo video
+
+
+[![Watch the app demo video](https://github.com/mdossett204/random-ai-projects/blob/main/custom_gpt_app/custom_gpt_chat.png)](https://www.youtube.com/watch?v=4cY1tTa_TxI)
 
 For the [blog](https://mindy-dossett.com/2025/08/31/custom-gpt-chat-app/)
