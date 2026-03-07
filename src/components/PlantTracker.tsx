@@ -1,12 +1,24 @@
-// src/components/PlantTracker.jsx
+// src/components/PlantTracker.tsx
 import React, { useState } from "react";
 import { Leaf, RotateCcw, Trash2, Plus } from "lucide-react";
 import { masterPlantList } from "../data/constants";
 
-const PlantTracker = ({ weeklyPlants, resetWeekly, addPlant, removePlant }) => {
+interface PlantTrackerProps {
+  weeklyPlants: string[];
+  resetWeekly: (type: "tasks" | "plants") => Promise<void>;
+  addPlant: (p: string) => Promise<void>;
+  removePlant: (p: string) => Promise<void>;
+}
+
+const PlantTracker: React.FC<PlantTrackerProps> = ({
+  weeklyPlants,
+  resetWeekly,
+  addPlant,
+  removePlant,
+}) => {
   const [newPlant, setNewPlant] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     addPlant(newPlant);
     setNewPlant("");

@@ -1,7 +1,11 @@
 import React from "react";
 import { ShieldCheck, LogIn } from "lucide-react";
 
-const LoginView = ({ handleLogin }) => {
+interface LoginViewProps {
+  handleLogin: () => Promise<void>;
+}
+
+const LoginView: React.FC<LoginViewProps> = ({ handleLogin }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
       <div className="max-w-md w-full bg-white rounded-[3rem] p-12 shadow-xl text-center border border-slate-100 animate-in fade-in zoom-in-95 duration-500">

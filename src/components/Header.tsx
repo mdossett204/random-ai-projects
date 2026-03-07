@@ -1,8 +1,24 @@
-// src/components/Header.jsx
+// src/components/Header.tsx
 import React from "react";
 import { ShieldCheck, Scale, Brain, CheckCircle2, LogOut } from "lucide-react";
+import { User } from "firebase/auth";
+import { DailyData } from "../data/constants";
 
-const Header = ({ todayStr, dailyData, weeklyPlants, user, handleLogout }) => {
+interface HeaderProps {
+  todayStr: string;
+  dailyData: DailyData;
+  weeklyPlants: string[];
+  user: User | null;
+  handleLogout: () => Promise<void>;
+}
+
+const Header: React.FC<HeaderProps> = ({
+  todayStr,
+  dailyData,
+  weeklyPlants,
+  user,
+  handleLogout,
+}) => {
   return (
     <header className="mb-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100">
       <div>

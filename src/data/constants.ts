@@ -1,13 +1,32 @@
-// src/data/constants.js
+// src/data/constants.ts
 
-export const defaultRituals = {
+export interface Rituals {
+  fishOil: boolean;
+  vitaminD3: boolean;
+  mgGlycinate: boolean;
+  boxBreathing: boolean;
+  [key: string]: boolean;
+}
+
+export interface DailyData {
+  steps: number;
+  waterCups: number;
+  creatine: number;
+  protein: number;
+  fatGrams: number;
+  fiber: number;
+  rituals: Rituals;
+  [key: string]: any;
+}
+
+export const defaultRituals: Rituals = {
   fishOil: false,
   vitaminD3: false,
   mgGlycinate: false,
   boxBreathing: false,
 };
 
-export const defaultDailyData = {
+export const defaultDailyData: DailyData = {
   steps: 0,
   waterCups: 0,
   creatine: 0,
@@ -17,7 +36,7 @@ export const defaultDailyData = {
   rituals: defaultRituals,
 };
 
-export const scheduleTitles = {
+export const scheduleTitles: Record<string, string> = {
   Monday: "Arm and Glute training",
   Tuesday: "VO2 max training (4x4 protocol)",
   Wednesday: "Core and Balance Training",
@@ -27,7 +46,7 @@ export const scheduleTitles = {
   Sunday: "Heavy leg and chest training",
 };
 
-export const foodLibrary = {
+export const foodLibrary: Record<string, string[]> = {
   "Spices & Herbs": [
     "Sumac",
     "Fennel Seeds",
@@ -99,8 +118,8 @@ export const foodLibrary = {
   Beverages: ["Black Tea", "Coffee", "Green Tea", "Mint Tea"],
 };
 
-export const masterPlantList = (() => {
-  const list = new Set();
+export const masterPlantList: string[] = (() => {
+  const list = new Set<string>();
   Object.values(foodLibrary).forEach((cat) =>
     cat.forEach((item) => list.add(item)),
   );

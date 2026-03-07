@@ -7,6 +7,7 @@ import {
   onAuthStateChanged,
   signInWithCustomToken,
   signOut,
+  User,
 } from "firebase/auth";
 import {
   getFirestore,
@@ -26,7 +27,16 @@ import PlantTracker from "./components/PlantTracker";
 import FoodLibrary from "./components/FoodLibrary";
 import TrainingScience from "./components/TrainingScience";
 import SidebarWidgets from "./components/SidebarWidgets";
-import { defaultDailyData, defaultRituals } from "./data/constants";
+import { defaultDailyData, defaultRituals, DailyData } from "./data/constants";
+
+// Global window augmentation for Firebase config
+declare global {
+  interface Window {
+    __firebase_config?: string;
+    __app_id?: string;
+    __initial_auth_token?: string;
+  }
+}
 
 // --- DATABASE CONFIG ---
 const firebaseConfig =
@@ -51,16 +61,18 @@ const appId =
     ? window.__app_id
     : "master-longevity-dashboard";
 
-const App = () => {
-  const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState("daily");
-  const [loading, setLoading] = useState(true);
+const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("daily");
+  const [loading, setLoading] = useState<boolean>(true);
 
   // Application State
-  const [dailyData, setDailyData] = useState(defaultDailyData);
-  const [completedTasks, setCompletedTasks] = useState([]);
-  const [weeklyPlants, setWeeklyPlants] = useState([]);
-  const [workoutDetails, setWorkoutDetails] = useState({});
+  const [dailyData, setDailyData] = useState<DailyData>(defaultDailyData);
+  const [completedTasks, setCompletedTasks] = useState<string[]>([]);
+  const [weeklyPlants, setWeeklyPlants] = useState<string[]>([]);
+  const [workoutDetails, setWorkoutDetails] = useState<Record<string, string>>(
+    {},
+  );
 
   const todayStr = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -160,7 +172,7 @@ const App = () => {
       dailyRef,
       (s) => {
         if (s.exists()) {
-          const d = s.data();
+          const d = s.data() as Partial<DailyData>;
           setDailyData({
             ...defaultDailyData,
             ...d,
@@ -184,7 +196,7 @@ const App = () => {
       (err) => console.error("Plants Sync Error:", err),
     );
     const unsubDetails = onSnapshot(detailsRef, (s) =>
-      setWorkoutDetails(s.exists() ? s.data() : {}),
+      setWorkoutDetails(s.exists() ? (s.data() as Record<string, string>) : {}),
     );
 
     return () => {
@@ -196,7 +208,7 @@ const App = () => {
   }, [user, datestamp]);
 
   // --- ACTIONS ---
-  const updateDaily = async (updates) => {
+  const updateDaily = async (updates: Partial<DailyData>) => {
     if (!user) return;
     const dailyRef = doc(
       db,
@@ -208,15 +220,24 @@ const App = () => {
       datestamp,
     );
     const sanitized = { ...updates };
-    ["steps", "protein", "fatGrams", "fiber", "waterCups", "creatine"].forEach(
-      (k) => {
-        if (k in sanitized) sanitized[k] = Math.max(0, sanitized[k]);
-      },
-    );
+    (
+      [
+        "steps",
+        "protein",
+        "fatGrams",
+        "fiber",
+        "waterCups",
+        "creatine",
+      ] as const
+    ).forEach((k) => {
+      if (k in sanitized && typeof sanitized[k] === "number") {
+        sanitized[k] = Math.max(0, sanitized[k] as number);
+      }
+    });
     await setDoc(dailyRef, sanitized, { merge: true });
   };
 
-  const toggleTask = async (day) => {
+  const toggleTask = async (day: string) => {
     if (!user) return;
     const tasksRef = doc(
       db,
@@ -233,7 +254,7 @@ const App = () => {
     await setDoc(tasksRef, { list: updated }, { merge: true });
   };
 
-  const updateWorkoutDetail = async (day, text) => {
+  const updateWorkoutDetail = async (day: string, text: string) => {
     if (!user) return;
     const detailsRef = doc(
       db,
@@ -247,7 +268,7 @@ const App = () => {
     await setDoc(detailsRef, { [day]: text }, { merge: true });
   };
 
-  const addPlant = async (p) => {
+  const addPlant = async (p: string) => {
     const rawInput = p.trim();
     if (!user || !rawInput) return;
     const normalized = rawInput
@@ -272,7 +293,7 @@ const App = () => {
     await setDoc(plantRef, { list: arrayUnion(normalized) }, { merge: true });
   };
 
-  const removePlant = async (p) => {
+  const removePlant = async (p: string) => {
     if (!user) return;
     const plantRef = doc(
       db,
@@ -286,7 +307,7 @@ const App = () => {
     await setDoc(plantRef, { list: arrayRemove(p) }, { merge: true });
   };
 
-  const resetWeekly = async (type) => {
+  const resetWeekly = async (type: "tasks" | "plants") => {
     if (!user) return;
     if (type === "tasks") {
       const tasksRef = doc(

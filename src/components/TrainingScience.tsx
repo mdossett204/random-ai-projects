@@ -1,8 +1,8 @@
-// src/components/TrainingScience.jsx
+// src/components/TrainingScience.tsx
 import React from "react";
 import { Target, Waves } from "lucide-react";
 
-const TrainingScience = () => {
+const TrainingScience: React.FC = () => {
   return (
     <div className="bg-white rounded-[3rem] p-10 border border-slate-100 space-y-8 shadow-sm animate-in fade-in zoom-in-95 duration-300">
       <h2 className="text-3xl font-black flex items-center gap-3 text-rose-500 tracking-tight">

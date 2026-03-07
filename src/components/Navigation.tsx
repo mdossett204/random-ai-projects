@@ -1,7 +1,12 @@
 import React from "react";
 import { Clock, Calendar, Leaf, ShoppingBag, Target } from "lucide-react";
 
-const Navigation = ({ activeTab, setActiveTab }) => {
+interface NavigationProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+}
+
+const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
   const tabs = [
     { id: "daily", label: "Daily Vitals", icon: <Clock className="w-4 h-4" /> },
     {

@@ -1,9 +1,9 @@
-// src/components/FoodLibrary.jsx
+// src/components/FoodLibrary.tsx
 import React from "react";
 import { ShoppingBag } from "lucide-react";
 import { foodLibrary } from "../data/constants";
 
-const FoodLibrary = () => {
+const FoodLibrary: React.FC = () => {
   return (
     <div className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm animate-in fade-in zoom-in-95 duration-300">
       <h2 className="text-2xl font-black mb-8 flex items-center gap-2">

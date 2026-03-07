@@ -1,8 +1,17 @@
-// src/components/SidebarWidgets.jsx
+// src/components/SidebarWidgets.tsx
 import React from "react";
 import { Leaf, Activity, CheckCircle2 } from "lucide-react";
+import { DailyData } from "../data/constants";
 
-const SidebarWidgets = ({ dailyData, weeklyPlants }) => {
+interface SidebarWidgetsProps {
+  dailyData: DailyData;
+  weeklyPlants: string[];
+}
+
+const SidebarWidgets: React.FC<SidebarWidgetsProps> = ({
+  dailyData,
+  weeklyPlants,
+}) => {
   return (
     <div className="space-y-6">
       {/* Protein Widget */}

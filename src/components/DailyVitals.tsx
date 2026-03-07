@@ -1,4 +1,4 @@
-// src/components/DailyVitals.jsx
+// src/components/DailyVitals.tsx
 import React from "react";
 import {
   Utensils,
@@ -8,9 +8,17 @@ import {
   Beaker,
   CheckCircle2,
 } from "lucide-react";
-import { defaultDailyData } from "../data/constants";
+import { defaultDailyData, DailyData } from "../data/constants";
 
-const DailyVitals = ({ dailyData, updateDaily }) => {
+interface DailyVitalsProps {
+  dailyData: DailyData;
+  updateDaily: (updates: Partial<DailyData>) => Promise<void>;
+}
+
+const DailyVitals: React.FC<DailyVitalsProps> = ({
+  dailyData,
+  updateDaily,
+}) => {
   return (
     <div className="bg-white rounded-[3rem] p-8 shadow-sm border border-slate-100 animate-in fade-in zoom-in-95 duration-300">
       <div className="flex justify-between items-center mb-8 border-b border-slate-50 pb-6">

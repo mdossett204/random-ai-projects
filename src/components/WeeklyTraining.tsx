@@ -1,9 +1,20 @@
-// src/components/WeeklyTraining.jsx
+// src/components/WeeklyTraining.tsx
 import React from "react";
 import { Dumbbell, RotateCcw } from "lucide-react";
 import { scheduleTitles } from "../data/constants";
 
-const WeeklyTraining = ({
+interface WeeklyTrainingProps {
+  completedTasks: string[];
+  toggleTask: (day: string) => Promise<void>;
+  workoutDetails: Record<string, string>;
+  setWorkoutDetails: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
+  updateWorkoutDetail: (day: string, text: string) => Promise<void>;
+  resetWeekly: (type: "tasks" | "plants") => Promise<void>;
+}
+
+const WeeklyTraining: React.FC<WeeklyTrainingProps> = ({
   completedTasks,
   toggleTask,
   workoutDetails,
