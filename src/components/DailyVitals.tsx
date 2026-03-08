@@ -36,8 +36,22 @@ const DailyVitals: React.FC<DailyVitalsProps> = ({
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest text-indigo-600 font-bold">
+                Weight (Pounds)
+              </label>
+              <input
+                type="number"
+                value={dailyData.weight}
+                min="0"
+                onChange={(e) =>
+                  updateDaily({ weight: parseFloat(e.target.value) || 0 })
+                }
+                className="w-full p-4 bg-slate-50 border border-indigo-100 rounded-2xl text-xl font-black outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
               <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest">
-                Protein (120g)
+                Protein ({Math.ceil(dailyData.weight * 1.0)})
               </label>
               <input
                 type="number"
@@ -51,7 +65,7 @@ const DailyVitals: React.FC<DailyVitalsProps> = ({
             </div>
             <div>
               <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest">
-                Fat (42g Floor)
+                Fat ({Math.ceil(dailyData.weight * 0.33)})
               </label>
               <input
                 type="number"
@@ -68,7 +82,7 @@ const DailyVitals: React.FC<DailyVitalsProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest text-emerald-600 font-bold">
-                Fiber (30g+)
+                Fiber (35g)
               </label>
               <input
                 type="number"
@@ -90,7 +104,7 @@ const DailyVitals: React.FC<DailyVitalsProps> = ({
                 min="0"
                 max="25"
                 onChange={(e) =>
-                  updateDaily({ creatine: parseInt(e.target.value) || 0 })
+                  updateDaily({ creatine: parseFloat(e.target.value) || 0 })
                 }
                 className="w-full p-4 bg-slate-50 border border-indigo-100 rounded-2xl text-xl font-black outline-none focus:ring-2 focus:ring-indigo-500"
               />
@@ -99,7 +113,8 @@ const DailyVitals: React.FC<DailyVitalsProps> = ({
 
           <div>
             <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block text-indigo-600 font-bold tracking-widest">
-              Water (Cups - Target: 18)
+              Water (Cups - Target: {Math.round((dailyData.weight * 0.8) / 8.0)}
+              )
             </label>
             <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100 shadow-sm">
               <button
@@ -113,7 +128,8 @@ const DailyVitals: React.FC<DailyVitalsProps> = ({
                 <Minus className="w-4 h-4" />
               </button>
               <span className="text-2xl font-black flex-grow text-center tracking-tighter">
-                {dailyData.waterCups} / 18
+                {dailyData.waterCups} /{" "}
+                {Math.round((dailyData.weight * 0.8) / 8.0)}
               </span>
               <button
                 onClick={() =>
@@ -128,7 +144,7 @@ const DailyVitals: React.FC<DailyVitalsProps> = ({
 
           <div className="pt-4 border-t border-slate-100">
             <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest">
-              Daily Step Goal (10k)
+              Daily Step Goal (10,000)
             </label>
             <input
               type="number"

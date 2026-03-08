@@ -1,7 +1,7 @@
 // src/components/PlantTracker.tsx
 import React, { useState } from "react";
 import { Leaf, RotateCcw, Trash2, Plus } from "lucide-react";
-import { masterPlantList } from "../data/constants";
+import { masterPlantList, foodLibrary } from "../data/constants";
 
 interface PlantTrackerProps {
   weeklyPlants: string[];
@@ -88,7 +88,24 @@ const PlantTracker: React.FC<PlantTrackerProps> = ({
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {masterPlantList
-              .filter((p) => !weeklyPlants.includes(p))
+              .filter(
+                (p) =>
+                  !weeklyPlants.some(
+                    (w) => w.toLowerCase() === p.toLowerCase(),
+                  ),
+              )
+              .filter(
+                (p) =>
+                  !foodLibrary["Animal Proteins"]?.some(
+                    (i) => i.toLowerCase() === p.toLowerCase(),
+                  ),
+              )
+              .filter(
+                (p) =>
+                  !foodLibrary["Healthy Fats"]?.some(
+                    (i) => i.toLowerCase() === p.toLowerCase(),
+                  ),
+              )
               .map((p) => (
                 <button
                   key={p}

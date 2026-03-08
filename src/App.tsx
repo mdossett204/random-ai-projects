@@ -27,7 +27,12 @@ import PlantTracker from "./components/PlantTracker";
 import FoodLibrary from "./components/FoodLibrary";
 import TrainingScience from "./components/TrainingScience";
 import SidebarWidgets from "./components/SidebarWidgets";
-import { defaultDailyData, defaultRituals, DailyData } from "./data/constants";
+import {
+  defaultDailyData,
+  defaultRituals,
+  defaultMobility,
+  DailyData,
+} from "./data/constants";
 
 // Global window augmentation for Firebase config
 declare global {
@@ -43,13 +48,13 @@ const firebaseConfig =
   typeof window !== "undefined" && window.__firebase_config
     ? JSON.parse(window.__firebase_config)
     : {
-        apiKey: "AIzaSyBRSDBcueUcc2nWLzzsy-D50NYzkKrls80",
-        authDomain: "longevity-dashboard-46509.firebaseapp.com",
-        projectId: "longevity-dashboard-46509",
-        storageBucket: "longevity-dashboard-46509.firebasestorage.app",
-        messagingSenderId: "1021085850822",
-        appId: "1:1021085850822:web:aa2bc5ac91551a58780bc7",
-        measurementId: "G-JCGHESVWWN",
+        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        appId: import.meta.env.VITE_FIREBASE_APP_ID,
+        measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
       };
 
 const app = initializeApp(firebaseConfig);
@@ -79,7 +84,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date();
-      if (now.getDate() !== currentDate.getDate()) {
+      if (now.toDateString() !== currentDate.toDateString()) {
         setCurrentDate(now);
       }
     }, 60000);
@@ -137,6 +142,11 @@ const App: React.FC = () => {
       setLoading(true);
       await signOut(auth);
       setUser(null);
+      setDailyData(defaultDailyData);
+      setCompletedTasks([]);
+      setWeeklyPlants([]);
+      setWorkoutDetails({});
+      setActiveTab("daily");
     } catch (err) {
       console.error("Logout failed:", err);
     } finally {
@@ -193,6 +203,7 @@ const App: React.FC = () => {
             ...defaultDailyData,
             ...d,
             rituals: { ...defaultRituals, ...(d.rituals || {}) },
+            mobility: { ...defaultMobility, ...(d.mobility || {}) },
           });
         } else {
           setDailyData(defaultDailyData);
@@ -244,6 +255,7 @@ const App: React.FC = () => {
         "fiber",
         "waterCups",
         "creatine",
+        "weight",
       ] as const
     ).forEach((k) => {
       if (k in sanitized && typeof sanitized[k] === "number") {
@@ -430,7 +442,11 @@ const App: React.FC = () => {
 
           <div className="lg:col-span-4 space-y-6">
             {/* Sidebar Progress Units */}
-            <SidebarWidgets dailyData={dailyData} weeklyPlants={weeklyPlants} />
+            <SidebarWidgets
+              dailyData={dailyData}
+              weeklyPlants={weeklyPlants}
+              updateDaily={updateDaily}
+            />
           </div>
         </div>
       </div>

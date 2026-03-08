@@ -25,11 +25,13 @@ const TrainingScience: React.FC = () => {
         </div>
         <div className="p-8 bg-indigo-50 rounded-[2.5rem] border border-indigo-100 shadow-sm">
           <h5 className="font-black text-indigo-600 uppercase text-xs mb-4 tracking-widest">
-            SIT & SMR
+            SIT, SMR & Yoga Stretch
           </h5>
           <p className="text-[11px] text-indigo-900 mb-4 leading-relaxed italic">
-            SIT: 30s All-out Sprint + 2m recovery. SMR (Self-Myofascial
-            Release): Use foam roller for 10m daily to clear fascial kinking.
+            SIT: Sprint Interval Traing is 30s All-out Sprint + 2m recovery. SMR
+            (Self-Myofascial Release): Use foam roller for 10m daily to clear
+            fascial kinking. Yoga: 10 min full body yoga stretch to relax and
+            improve flexibility.
           </p>
         </div>
       </div>

@@ -31,11 +31,12 @@ const Header: React.FC<HeaderProps> = ({
         </h1>
         <div className="flex flex-wrap items-center gap-4 mt-4">
           <span className="flex items-center gap-1.5 text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-            <Scale className="w-4 h-4 text-indigo-400" /> 120 lbs
+            <Scale className="w-4 h-4 text-indigo-400" /> Weight:{" "}
+            {dailyData.weight ?? 0} pounds
           </span>
           <span className="flex items-center gap-1.5 text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
             <Brain className="w-4 h-4 text-indigo-400" /> Creatine:{" "}
-            {dailyData.creatine ?? 0}g
+            {dailyData.creatine ?? 0} g
           </span>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full flex items-center gap-1.5 border border-emerald-100">
