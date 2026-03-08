@@ -74,13 +74,29 @@ const App: React.FC = () => {
     {},
   );
 
-  const todayStr = new Date().toLocaleDateString("en-US", {
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      if (now.getDate() !== currentDate.getDate()) {
+        setCurrentDate(now);
+      }
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [currentDate]);
+
+  const todayStr = currentDate.toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
   });
-  const datestamp = new Date().toISOString().split("T")[0];
+
+  const year = currentDate.getFullYear();
+  const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+  const day = String(currentDate.getDate()).padStart(2, "0");
+  const datestamp = `${year}-${month}-${day}`;
 
   // --- AUTHENTICATION ---
   useEffect(() => {
