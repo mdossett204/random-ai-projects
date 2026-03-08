@@ -4,4 +4,4 @@ This is a personal longevity protocol dashboard web application deployed using F
 
 This dashboard is personalized for me personally.
 
-![Dashboard UI](assets/dashboard-image.jpeg)
+![Dashboard UI](src/assets/dashboard-image.jpeg)
