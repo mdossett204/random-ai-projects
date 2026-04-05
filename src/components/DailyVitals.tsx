@@ -113,8 +113,8 @@ const DailyVitals: React.FC<DailyVitalsProps> = ({
 
           <div>
             <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block text-indigo-600 font-bold tracking-widest">
-              Water (Cups - Target: {Math.round((dailyData.weight * 0.8) / 8.0)}
-              )
+              Water (Cups, 8 fluid oz - Target:{" "}
+              {Math.round((dailyData.weight * 0.8) / 8.0)})
             </label>
             <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100 shadow-sm">
               <button
