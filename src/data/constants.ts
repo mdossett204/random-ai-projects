@@ -44,7 +44,7 @@ export const defaultMobility: Mobility = {
 export const defaultDailyData: DailyData = {
   steps: 0,
   waterCups: 0,
-  weight: 0,
+  weight: 120,
   creatine: 0,
   protein: 0,
   fatGrams: 0,
@@ -55,12 +55,12 @@ export const defaultDailyData: DailyData = {
 
 export const scheduleTitles: Record<string, string> = {
   Monday: "VO2 Max Training (4x4 protocol)",
-  Tuesday: "Shoulder Training",
+  Tuesday: "Stretch and Active Rest",
   Wednesday: "Sprint Intervals (30 sec on, 2 min off)",
-  Thursday: "Core and Balance Training",
-  Friday: "Glute Training",
-  Saturday: "Heavy Chest and Back Training",
-  Sunday: "Heavy Leg Training",
+  Thursday: "Resistance Training",
+  Friday: "Resistance Training",
+  Saturday: "Resistance Training",
+  Sunday: "Resistance Training",
 };
 
 export const foodLibrary: Record<string, string[]> = {
@@ -118,12 +118,19 @@ export const foodLibrary: Record<string, string[]> = {
   ],
   Fruits: [
     "Avocado",
+    "Apple",
+    "Coconut",
+    "Cranberries",
+    "Dragonfruit",
     "Pomegranate",
     "Blueberries",
     "Raspberries",
     "Strawberries",
     "Blackberries",
     "Black Cherries",
+    "Pears",
+    "figs",
+    "mangos",
     "Green Banana",
     "Lemon",
     "Lime",
