@@ -22,11 +22,9 @@ import Header from "./components/Header";
 import LoginView from "./components/LoginView";
 import Navigation from "./components/Navigation";
 import DailyVitals from "./components/DailyVitals";
-import WeeklyTraining from "./components/WeeklyTraining";
+import WeeklyTraining, { DayWorkout } from "./components/WeeklyTraining";
 import PlantTracker from "./components/PlantTracker";
 import FoodLibrary from "./components/FoodLibrary";
-import TrainingScience from "./components/TrainingScience";
-import SidebarWidgets from "./components/SidebarWidgets";
 import {
   defaultDailyData,
   defaultRituals,
@@ -73,11 +71,10 @@ const App: React.FC = () => {
 
   // Application State
   const [dailyData, setDailyData] = useState<DailyData>(defaultDailyData);
-  const [completedTasks, setCompletedTasks] = useState<string[]>([]);
   const [weeklyPlants, setWeeklyPlants] = useState<string[]>([]);
-  const [workoutDetails, setWorkoutDetails] = useState<Record<string, string>>(
-    {},
-  );
+  const [workoutDetails, setWorkoutDetails] = useState<
+    Record<string, DayWorkout>
+  >({});
 
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -143,7 +140,6 @@ const App: React.FC = () => {
       await signOut(auth);
       setUser(null);
       setDailyData(defaultDailyData);
-      setCompletedTasks([]);
       setWeeklyPlants([]);
       setWorkoutDetails({});
       setActiveTab("daily");
@@ -165,15 +161,6 @@ const App: React.FC = () => {
       user.uid,
       "dailyStats",
       datestamp,
-    );
-    const tasksRef = doc(
-      db,
-      "artifacts",
-      appId,
-      "users",
-      user.uid,
-      "tracking",
-      "weeklyTasks",
     );
     const plantRef = doc(
       db,
@@ -212,23 +199,19 @@ const App: React.FC = () => {
       (err) => console.error("Daily Sync Error:", err),
     );
 
-    const unsubTasks = onSnapshot(
-      tasksRef,
-      (s) => setCompletedTasks(s.exists() ? s.data().list || [] : []),
-      (err) => console.error("Tasks Sync Error:", err),
-    );
     const unsubPlants = onSnapshot(
       plantRef,
       (s) => setWeeklyPlants(s.exists() ? s.data().list || [] : []),
       (err) => console.error("Plants Sync Error:", err),
     );
     const unsubDetails = onSnapshot(detailsRef, (s) =>
-      setWorkoutDetails(s.exists() ? (s.data() as Record<string, string>) : {}),
+      setWorkoutDetails(
+        s.exists() ? (s.data() as Record<string, DayWorkout>) : {},
+      ),
     );
 
     return () => {
       unsubDaily();
-      unsubTasks();
       unsubPlants();
       unsubDetails();
     };
@@ -247,42 +230,10 @@ const App: React.FC = () => {
       datestamp,
     );
     const sanitized = { ...updates };
-    (
-      [
-        "steps",
-        "protein",
-        "fatGrams",
-        "fiber",
-        "waterCups",
-        "creatine",
-        "weight",
-      ] as const
-    ).forEach((k) => {
-      if (k in sanitized && typeof sanitized[k] === "number") {
-        sanitized[k] = Math.max(0, sanitized[k] as number);
-      }
-    });
     await setDoc(dailyRef, sanitized, { merge: true });
   };
 
-  const toggleTask = async (day: string) => {
-    if (!user) return;
-    const tasksRef = doc(
-      db,
-      "artifacts",
-      appId,
-      "users",
-      user.uid,
-      "tracking",
-      "weeklyTasks",
-    );
-    const updated = completedTasks.includes(day)
-      ? arrayRemove(day)
-      : arrayUnion(day);
-    await setDoc(tasksRef, { list: updated }, { merge: true });
-  };
-
-  const updateWorkoutDetail = async (day: string, text: string) => {
+  const updateWorkoutDetail = async (day: string, data: DayWorkout) => {
     if (!user) return;
     const detailsRef = doc(
       db,
@@ -293,7 +244,7 @@ const App: React.FC = () => {
       "tracking",
       "workoutDetails",
     );
-    await setDoc(detailsRef, { [day]: text }, { merge: true });
+    await setDoc(detailsRef, { [day]: data }, { merge: true });
   };
 
   const addPlant = async (p: string) => {
@@ -338,15 +289,6 @@ const App: React.FC = () => {
   const resetWeekly = async (type: "tasks" | "plants") => {
     if (!user) return;
     if (type === "tasks") {
-      const tasksRef = doc(
-        db,
-        "artifacts",
-        appId,
-        "users",
-        user.uid,
-        "tracking",
-        "weeklyTasks",
-      );
       const detailsRef = doc(
         db,
         "artifacts",
@@ -356,7 +298,6 @@ const App: React.FC = () => {
         "tracking",
         "workoutDetails",
       );
-      await setDoc(tasksRef, { list: [] }, { merge: true });
       await setDoc(detailsRef, {}, { merge: false });
     } else {
       const ref = doc(
@@ -374,10 +315,14 @@ const App: React.FC = () => {
 
   if (loading)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-indigo-600 font-black tracking-widest uppercase text-xs">
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-violet-600/20 rounded-full -translate-y-1/2 -translate-x-1/2 blur-3xl pointer-events-none" />
+        <div className="text-center relative z-10">
+          <div className="w-16 h-16 relative mx-auto mb-6">
+            <div className="absolute inset-0 border-4 border-slate-800 rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <p className="text-slate-400 font-bold tracking-[0.2em] uppercase text-xs animate-pulse">
             Syncing Protocol...
           </p>
         </div>
@@ -390,12 +335,11 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans p-4 md:p-8">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans p-4 md:p-8 selection:bg-indigo-100">
       <div className="max-w-7xl mx-auto pb-20">
         {/* Header */}
         <Header
           todayStr={todayStr}
-          dailyData={dailyData}
           weeklyPlants={weeklyPlants}
           user={user}
           handleLogout={handleLogout}
@@ -404,50 +348,34 @@ const App: React.FC = () => {
         {/* Navigation */}
         <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-8">
-            {/* DAILY VITALS TAB */}
-            {activeTab === "daily" && (
-              <DailyVitals dailyData={dailyData} updateDaily={updateDaily} />
-            )}
+        <div className="w-full">
+          {/* DAILY ROUTINE TAB */}
+          {activeTab === "daily" && (
+            <DailyVitals dailyData={dailyData} updateDaily={updateDaily} />
+          )}
 
-            {/* WEEKLY TRAINING ROUTINE TAB */}
-            {activeTab === "weekly" && (
-              <WeeklyTraining
-                completedTasks={completedTasks}
-                toggleTask={toggleTask}
-                workoutDetails={workoutDetails}
-                setWorkoutDetails={setWorkoutDetails}
-                updateWorkoutDetail={updateWorkoutDetail}
-                resetWeekly={resetWeekly}
-              />
-            )}
-
-            {/* PLANT TRACKER TAB */}
-            {activeTab === "diversity" && (
-              <PlantTracker
-                weeklyPlants={weeklyPlants}
-                resetWeekly={resetWeekly}
-                addPlant={addPlant}
-                removePlant={removePlant}
-              />
-            )}
-
-            {/* FOOD LIBRARY TAB */}
-            {activeTab === "food" && <FoodLibrary />}
-
-            {/* TRAINING SCIENCE TAB */}
-            {activeTab === "science" && <TrainingScience />}
-          </div>
-
-          <div className="lg:col-span-4 space-y-6">
-            {/* Sidebar Progress Units */}
-            <SidebarWidgets
-              dailyData={dailyData}
-              weeklyPlants={weeklyPlants}
-              updateDaily={updateDaily}
+          {/* WEEKLY TRAINING ROUTINE TAB */}
+          {activeTab === "weekly" && (
+            <WeeklyTraining
+              workoutDetails={workoutDetails}
+              setWorkoutDetails={setWorkoutDetails}
+              updateWorkoutDetail={updateWorkoutDetail}
+              resetWeekly={resetWeekly}
             />
-          </div>
+          )}
+
+          {/* PLANT TRACKER TAB */}
+          {activeTab === "diversity" && (
+            <PlantTracker
+              weeklyPlants={weeklyPlants}
+              resetWeekly={resetWeekly}
+              addPlant={addPlant}
+              removePlant={removePlant}
+            />
+          )}
+
+          {/* FOOD LIBRARY TAB */}
+          {activeTab === "food" && <FoodLibrary />}
         </div>
       </div>
     </div>

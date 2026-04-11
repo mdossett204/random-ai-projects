@@ -1,13 +1,6 @@
 // src/components/DailyVitals.tsx
 import React from "react";
-import {
-  Utensils,
-  RotateCcw,
-  Minus,
-  Plus,
-  Beaker,
-  CheckCircle2,
-} from "lucide-react";
+import { HeartPulse, Activity, RotateCcw, CheckCircle2 } from "lucide-react";
 import { defaultDailyData, DailyData } from "../data/constants";
 
 interface DailyVitalsProps {
@@ -15,175 +8,146 @@ interface DailyVitalsProps {
   updateDaily: (updates: Partial<DailyData>) => Promise<void>;
 }
 
+const CheckCard = ({
+  label,
+  checked,
+  onClick,
+  color,
+}: {
+  label: string;
+  checked: boolean;
+  onClick: () => void;
+  color: "violet" | "emerald";
+}) => {
+  const activeClass =
+    color === "violet"
+      ? "bg-violet-600 border-violet-600 text-white shadow-lg shadow-violet-200"
+      : "bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-100";
+
+  const inactiveClass =
+    color === "violet"
+      ? "bg-white border-slate-200 text-slate-400 hover:border-violet-200 hover:bg-violet-50/50 hover:text-violet-600"
+      : "bg-white border-slate-200 text-slate-400 hover:border-emerald-200 hover:bg-emerald-50/50 hover:text-emerald-600";
+
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full p-5 rounded-2xl border-2 flex flex-col justify-center items-center gap-3 transition-all duration-200 active:scale-[0.97] ${
+        checked ? activeClass : inactiveClass
+      }`}
+    >
+      {checked ? (
+        <CheckCircle2 className="w-8 h-8" />
+      ) : (
+        <div className="w-8 h-8 rounded-full border-[3px] border-current opacity-30" />
+      )}
+      <span className="text-sm font-bold leading-tight text-center">
+        {label}
+      </span>
+    </button>
+  );
+};
+
 const DailyVitals: React.FC<DailyVitalsProps> = ({
   dailyData,
   updateDaily,
 }) => {
+  const vitalsItems = [
+    { key: "fishOil", label: "Fish Oil" },
+    { key: "vitaminD3", label: "Vitamin D3" },
+    { key: "magnesium", label: "Magnesium" },
+    { key: "creatine", label: "Creatine" },
+  ];
+
+  const mobilityItems = [
+    { key: "breathing", label: "Breathing" },
+    { key: "foamRoll", label: "Foam Roll" },
+    { key: "dynamicStretch", label: "Dynamic Stretch" },
+    { key: "staticStretch", label: "Static Stretch" },
+    { key: "training", label: "Daily Training" },
+  ];
+
+  const vitalsChecked = vitalsItems.filter(
+    (i) => dailyData.rituals?.[i.key],
+  ).length;
+  const mobilityChecked = mobilityItems.filter(
+    (i) => dailyData.mobility?.[i.key],
+  ).length;
+
   return (
-    <div className="bg-white rounded-[3rem] p-8 shadow-sm border border-slate-100 animate-in fade-in zoom-in-95 duration-300">
-      <div className="flex justify-between items-center mb-8 border-b border-slate-50 pb-6">
-        <h2 className="text-2xl font-black flex items-center gap-2">
-          <Utensils className="w-6 h-6 text-indigo-600" /> Intake Tracker
-        </h2>
-        <button
-          onClick={() => updateDaily(defaultDailyData)}
-          className="flex items-center gap-2 text-[10px] font-black uppercase text-rose-400 hover:text-rose-600 transition-colors"
-        >
-          <RotateCcw className="w-3 h-3" /> Reset Day
-        </button>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest text-indigo-600 font-bold">
-                Weight (Pounds)
-              </label>
-              <input
-                type="number"
-                value={dailyData.weight}
-                min="0"
-                onChange={(e) =>
-                  updateDaily({ weight: parseFloat(e.target.value) || 0 })
-                }
-                className="w-full p-4 bg-slate-50 border border-indigo-100 rounded-2xl text-xl font-black outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest">
-                Protein ({Math.ceil(dailyData.weight * 1.0)})
-              </label>
-              <input
-                type="number"
-                value={dailyData.protein}
-                min="0"
-                onChange={(e) =>
-                  updateDaily({ protein: parseInt(e.target.value) || 0 })
-                }
-                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xl font-black outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest">
-                Fat ({Math.ceil(dailyData.weight * 0.33)})
-              </label>
-              <input
-                type="number"
-                value={dailyData.fatGrams}
-                min="0"
-                onChange={(e) =>
-                  updateDaily({ fatGrams: parseInt(e.target.value) || 0 })
-                }
-                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xl font-black outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest text-emerald-600 font-bold">
-                Fiber (35g)
-              </label>
-              <input
-                type="number"
-                value={dailyData.fiber}
-                min="0"
-                onChange={(e) =>
-                  updateDaily({ fiber: parseInt(e.target.value) || 0 })
-                }
-                className="w-full p-4 bg-slate-50 border border-emerald-100 rounded-2xl text-xl font-black outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest text-indigo-600 font-bold">
-                Creatine (Grams)
-              </label>
-              <input
-                type="number"
-                value={dailyData.creatine}
-                min="0"
-                max="25"
-                onChange={(e) =>
-                  updateDaily({ creatine: parseFloat(e.target.value) || 0 })
-                }
-                className="w-full p-4 bg-slate-50 border border-indigo-100 rounded-2xl text-xl font-black outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-
+    <div className="space-y-6">
+      {/* Vitamins */}
+      <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/60 animate-in fade-in zoom-in-95 duration-300">
+        <div className="flex justify-between items-center mb-6 pb-5 border-b border-slate-100">
           <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block text-indigo-600 font-bold tracking-widest">
-              Water (Cups, 8 fluid oz - Target:{" "}
-              {Math.round((dailyData.weight * 0.8) / 8.0)})
-            </label>
-            <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100 shadow-sm">
-              <button
-                onClick={() =>
-                  updateDaily({
-                    waterCups: Math.max(0, (dailyData.waterCups || 0) - 1),
-                  })
-                }
-                className="p-2 bg-white rounded-lg shadow-sm border hover:bg-slate-50 transition-colors"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-              <span className="text-2xl font-black flex-grow text-center tracking-tighter">
-                {dailyData.waterCups} /{" "}
-                {Math.round((dailyData.weight * 0.8) / 8.0)}
-              </span>
-              <button
-                onClick={() =>
-                  updateDaily({ waterCups: (dailyData.waterCups || 0) + 1 })
-                }
-                className="p-2 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
+            <h2 className="text-xl font-black flex items-center gap-2 text-slate-900">
+              <HeartPulse className="w-5 h-5 text-violet-500" /> Daily Vitamins
+            </h2>
+            <p className="text-xs text-slate-400 font-semibold mt-1 ml-7">
+              {vitalsChecked} of {vitalsItems.length} taken today
+            </p>
           </div>
-
-          <div className="pt-4 border-t border-slate-100">
-            <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block tracking-widest">
-              Daily Step Goal (10,000)
-            </label>
-            <input
-              type="number"
-              value={dailyData.steps}
-              min="0"
-              onChange={(e) =>
-                updateDaily({ steps: parseInt(e.target.value) || 0 })
-              }
-              className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xl font-black outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
+          <button
+            onClick={() => updateDaily({ rituals: defaultDailyData.rituals })}
+            className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-slate-400 hover:text-violet-500 transition-colors"
+          >
+            <RotateCcw className="w-3 h-3" /> Reset
+          </button>
         </div>
-        <div className="space-y-4">
-          <h2 className="text-xl font-black text-emerald-600 flex items-center gap-2 mb-2">
-            <Beaker className="w-5 h-5" /> Daily Rituals
-          </h2>
-          {Object.entries(dailyData.rituals).map(([id, val]) => (
-            <button
-              key={id}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {vitalsItems.map((item) => (
+            <CheckCard
+              key={item.key}
+              label={item.label}
+              checked={!!dailyData.rituals?.[item.key]}
               onClick={() =>
-                updateDaily({ rituals: { ...dailyData.rituals, [id]: !val } })
+                updateDaily({
+                  rituals: {
+                    ...dailyData.rituals,
+                    [item.key]: !dailyData.rituals?.[item.key],
+                  },
+                })
               }
-              className={`w-full p-4 rounded-2xl border flex justify-between items-center transition-all ${
-                val
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-800 shadow-sm"
-                  : "bg-white border-slate-100 text-slate-500 hover:border-emerald-100"
-              }`}
-            >
-              <span className="text-sm font-bold capitalize">
-                {id === "vitaminD3"
-                  ? "Vitamin D3"
-                  : id.replace(/([A-Z])/g, " $1")}
-              </span>
-              {val ? (
-                <CheckCircle2 className="w-5 h-5" />
-              ) : (
-                <div className="w-5 h-5 rounded-full border-2 border-slate-100" />
-              )}
-            </button>
+              color="violet"
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Movement */}
+      <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/60 animate-in fade-in zoom-in-95 duration-300 delay-75">
+        <div className="flex justify-between items-center mb-6 pb-5 border-b border-slate-100">
+          <div>
+            <h2 className="text-xl font-black flex items-center gap-2 text-slate-900">
+              <Activity className="w-5 h-5 text-emerald-500" /> Daily Movement
+            </h2>
+            <p className="text-xs text-slate-400 font-semibold mt-1 ml-7">
+              {mobilityChecked} of {mobilityItems.length} completed
+            </p>
+          </div>
+          <button
+            onClick={() => updateDaily({ mobility: defaultDailyData.mobility })}
+            className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-slate-400 hover:text-emerald-500 transition-colors"
+          >
+            <RotateCcw className="w-3 h-3" /> Reset
+          </button>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          {mobilityItems.map((item) => (
+            <CheckCard
+              key={item.key}
+              label={item.label}
+              checked={!!dailyData.mobility?.[item.key]}
+              onClick={() =>
+                updateDaily({
+                  mobility: {
+                    ...dailyData.mobility,
+                    [item.key]: !dailyData.mobility?.[item.key],
+                  },
+                })
+              }
+              color="emerald"
+            />
           ))}
         </div>
       </div>

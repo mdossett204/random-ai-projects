@@ -1,12 +1,10 @@
 // src/components/Header.tsx
 import React from "react";
-import { ShieldCheck, Scale, Brain, CheckCircle2, LogOut } from "lucide-react";
+import { ShieldCheck, LogOut, Zap } from "lucide-react";
 import { User } from "firebase/auth";
-import { DailyData } from "../data/constants";
 
 interface HeaderProps {
   todayStr: string;
-  dailyData: DailyData;
   weeklyPlants: string[];
   user: User | null;
   handleLogout: () => Promise<void>;
@@ -14,59 +12,62 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({
   todayStr,
-  dailyData,
   weeklyPlants,
   user,
   handleLogout,
 }) => {
+  const diversity = weeklyPlants.length;
+  const diversityPct = Math.min((diversity / 30) * 100, 100);
+
   return (
-    <header className="mb-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-8 rounded-[3rem] shadow-sm border border-slate-100">
-      <div>
-        <div className="flex items-center gap-3 text-indigo-600 font-bold mb-2">
-          <ShieldCheck className="w-6 h-6" />
-          <span className="uppercase tracking-[0.3em] text-xs">{todayStr}</span>
-        </div>
-        <h1 className="text-4xl font-black tracking-tighter text-slate-900 leading-none">
-          Master Longevity Protocol
-        </h1>
-        <div className="flex flex-wrap items-center gap-4 mt-4">
-          <span className="flex items-center gap-1.5 text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-            <Scale className="w-4 h-4 text-indigo-400" /> Weight:{" "}
-            {dailyData.weight ?? 0} pounds
-          </span>
-          <span className="flex items-center gap-1.5 text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-            <Brain className="w-4 h-4 text-indigo-400" /> Creatine:{" "}
-            {dailyData.creatine ?? 0} g
-          </span>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full flex items-center gap-1.5 border border-emerald-100">
-              <CheckCircle2 className="w-3 h-3" /> Synced: {user?.email}
+    <header className="mb-8 relative overflow-hidden bg-slate-900 p-8 rounded-3xl border border-slate-700/50">
+      {/* Decorative background blobs */}
+      <div className="absolute top-0 right-0 w-72 h-72 bg-violet-600/10 rounded-full -translate-y-1/2 translate-x-1/4 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-1/3 w-48 h-48 bg-emerald-500/10 rounded-full translate-y-1/2 blur-3xl pointer-events-none" />
+
+      <div className="relative flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+        <div>
+          <div className="flex items-center gap-2.5 mb-3">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-violet-400 bg-violet-400/10 border border-violet-400/20 px-3 py-1 rounded-full">
+              <ShieldCheck className="w-3 h-3" /> {todayStr}
+            </span>
+          </div>
+          <h1 className="text-4xl font-black tracking-tight text-white leading-none mb-1">
+            Longevity Protocol
+          </h1>
+          <p className="text-slate-400 text-sm font-medium mt-2">
+            Optimizing health one day at a time
+          </p>
+          <div className="flex flex-wrap items-center gap-2 mt-4">
+            <span className="text-[10px] font-bold uppercase text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+              <Zap className="w-3 h-3" /> {user?.email}
             </span>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 text-[10px] font-black uppercase text-rose-500 bg-rose-50 px-3 py-1 rounded-full hover:bg-rose-100 transition-all border border-rose-100"
+              className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-slate-400 bg-slate-800 px-3 py-1.5 rounded-full hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-400/30 transition-all border border-slate-700"
             >
               <LogOut className="w-3 h-3" /> Logout
             </button>
           </div>
         </div>
-      </div>
-      <div className="flex flex-wrap gap-4">
-        <div className="bg-slate-50 px-6 py-4 rounded-[2rem] border border-slate-100 text-center min-w-[120px]">
-          <span className="text-[10px] font-black text-slate-400 uppercase block mb-1 tracking-widest">
-            Diversity
-          </span>
-          <span className="text-2xl font-black text-emerald-600">
-            {weeklyPlants.length} / 30
-          </span>
-        </div>
-        <div className="bg-indigo-600 px-6 py-4 rounded-[2rem] text-white shadow-xl text-center min-w-[140px]">
-          <span className="text-[10px] font-black text-indigo-200 uppercase block mb-1 tracking-widest">
-            Daily Steps
-          </span>
-          <span className="text-2xl font-black">
-            {(dailyData.steps ?? 0).toLocaleString()}
-          </span>
+
+        {/* Stats panel */}
+        <div className="flex flex-wrap gap-3">
+          <div className="bg-slate-800/80 border border-slate-700/60 px-6 py-4 rounded-2xl text-center min-w-[140px] backdrop-blur-sm">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+              Plant Diversity
+            </span>
+            <span className="text-3xl font-black text-white">
+              {diversity}
+              <span className="text-lg text-slate-500 font-bold"> / 30</span>
+            </span>
+            <div className="mt-3 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-700"
+                style={{ width: `${diversityPct}%` }}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </header>

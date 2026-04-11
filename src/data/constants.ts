@@ -3,172 +3,163 @@
 export interface Rituals {
   fishOil: boolean;
   vitaminD3: boolean;
-  mgGlycinate: boolean;
-  boxBreathing: boolean;
+  magnesium: boolean;
+  creatine: boolean;
   [key: string]: boolean;
 }
 
 export interface Mobility {
-  smr: boolean;
+  foamRoll: boolean;
   dynamicStretch: boolean;
-  stability: boolean;
+  staticStretch: boolean;
+  training: boolean;
+  breathing: boolean;
   [key: string]: boolean;
 }
 
 export interface DailyData {
-  steps: number;
-  waterCups: number;
-  weight: number;
-  creatine: number;
-  protein: number;
-  fatGrams: number;
-  fiber: number;
   rituals: Rituals;
   mobility: Mobility;
-  [key: string]: number | Rituals | Mobility;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
 }
 
 export const defaultRituals: Rituals = {
   fishOil: false,
   vitaminD3: false,
-  mgGlycinate: false,
-  boxBreathing: false,
+  magnesium: false,
+  creatine: false,
 };
 
 export const defaultMobility: Mobility = {
-  smr: false,
+  foamRoll: false,
   dynamicStretch: false,
-  stability: false,
+  staticStretch: false,
+  training: false,
+  breathing: false,
 };
 
 export const defaultDailyData: DailyData = {
-  steps: 0,
-  waterCups: 0,
-  weight: 120,
-  creatine: 0,
-  protein: 0,
-  fatGrams: 0,
-  fiber: 0,
   rituals: defaultRituals,
   mobility: defaultMobility,
 };
 
-export const scheduleTitles: Record<string, string> = {
-  Monday: "VO2 Max Training (4x4 protocol)",
-  Tuesday: "Stretch and Active Rest",
-  Wednesday: "Sprint Intervals (30 sec on, 2 min off)",
-  Thursday: "Resistance Training",
-  Friday: "Resistance Training",
-  Saturday: "Resistance Training",
-  Sunday: "Resistance Training",
-};
-
 export const foodLibrary: Record<string, string[]> = {
   "Spices & Herbs": [
-    "Sumac",
-    "Tumeric",
-    "Coriander",
-    "Fennel Seeds",
-    "Caraway Seeds",
-    "Black Poppy Seeds",
-    "Sesame Seeds",
-    "Black Pepper",
-    "Beet root power",
-    "Ginger",
-    "Cardamon",
-    "Mustard Seeds",
-    "Cinnamon",
-    "Nutmeg",
-    "Cloves",
-    "Cumin",
-    "Oregano",
     "Basil",
-    "Thyme",
+    "Beet root power",
+    "Black Pepper",
+    "Black Poppy Seeds",
+    "Cacao Powder",
+    "Caraway Seeds",
+    "Cardamon",
+    "Cayenne Pepper",
+    "Cinnamon",
+    "Cloves",
+    "Coriander",
+
+    "Cumin",
+    "Fennel Seeds",
+    "Ginger",
+    "Mustard Seeds",
+    "Nutmeg",
+    "Oregano",
+    "Paprika",
     "Parsley",
     "Red Pepper Flakes",
-    "Cayenne Pepper",
-    "Paprika",
-    "Cacao Powder",
+    "Sesame Seeds",
+    "Sumac",
+    "Thyme",
+    "Tumeric",
   ],
   Vegetables: [
-    "Red Onion",
-    "Garlic",
-    "carrots",
-    "celery",
-    "Olives",
-    "Lettuce",
-    "Sweet Potato",
-    "Okra",
-    "Cauliflower",
-    "Broccoli",
     "Artichokes",
-    "Heart Of Palm",
-    "Asparagus",
-    "Mushrooms",
     "Arugula",
-    "Spring Mix",
+    "Asparagus",
+    "Broccoli",
+    "Brussel Sprouts",
+    "Cabbage",
+    "Carrots",
+    "Cauliflower",
+    "Celery",
+    "Endives",
+    "Garlic",
+    "Heart Of Palm",
+    "Lettuce",
+    "Mushrooms",
+    "Nutritional Yeast",
+    "Okra",
+    "Olives",
     "Radicchio",
     "Radish",
-    "Cabbage",
-    "Endives",
-    "Brussel Sprouts",
-    "Allulose",
-    "Nutritional Yeast",
+    "Red Onion",
     "Seaweed",
+    "Spring Mix",
+    "Sweet Potato",
   ],
   Fruits: [
-    "Avocado",
     "Apple",
+    "Avocado",
+    "Black Cherries",
+    "Blackberries",
+    "Blueberries",
     "Coconut",
     "Cranberries",
     "Dragonfruit",
-    "Pomegranate",
-    "Blueberries",
-    "Raspberries",
-    "Strawberries",
-    "Blackberries",
-    "Black Cherries",
-    "Pears",
-    "figs",
-    "mangos",
+    "Figs",
     "Green Banana",
     "Lemon",
     "Lime",
+    "Mangos",
+    "Oranges",
+    "Pears",
+    "Pomegranate",
+    "Raspberries",
+    "Strawberries",
   ],
-  Fermented: ["Natto", "Miso", "Kimchi", "Sauerkraut", "Vinegar", "Kombucha"],
+  Fermented: ["Kimchi", "Kombucha", "Miso", "Natto", "Sauerkraut", "Vinegar"],
   "Nuts/Seeds": [
-    "Walnuts",
     "Brazil Nuts",
-    "Pistachio",
+    "Chia Seeds",
     "Flax Seeds",
     "Hemp Seeds",
+    "Pistachio",
+    "Walnuts",
   ],
   "Animal Proteins": [
-    "Wild Caught Salmon",
-    "White Fish",
+    "100% Grass Fed Beef",
     "Canned Tuna",
-    "Wild Caught Sardine",
-    "Wild Caught Shrimp",
-    "Wild Caught Scallops",
+    "Chicken Breasts",
+    "Kefir",
+    "Pasture Raised Chicken",
+    "Pasture Raised Eggs",
+    "Pasture Raised Goat",
+    "Pasture Raised Lamb",
+    "White Fish",
     "Wild Caught Mussels",
     "Wild Caught Oyster",
+    "Wild Caught Salmon",
+    "Wild Caught Sardine",
+    "Wild Caught Scallops",
+    "Wild Caught Shrimp",
     "Wild Caught Squids",
-    "Pasture Raised Eggs",
-    "Chicken Breasts",
-    "Pasture Raised Chicken",
-    "100% Grass Fed Beef",
-    "Pasture Raised Lamb",
-    "Pasture Raised Goat",
-    "Kefir",
     "Yogurt",
   ],
   "Healthy Fats": [
     "Extra Virgin Olive Oil",
-    "Pasture Raised Butter/Ghee",
     "Grass Fed Beef Tallow",
     "Nuts/Seeds",
+    "Pasture Raised Butter/Ghee",
   ],
-  Beverages: ["Black Tea", "Coffee", "Green Tea", "Mint Tea", "Chamomile Tea"],
+  Beverages: [
+    "Black Tea",
+    "Chamomile Tea",
+    "Coffee",
+    "Green Tea",
+    "Herbal Tea",
+    "Lemonade",
+    "Mint Tea",
+  ],
 };
 
 export const masterPlantList: string[] = (() => {
