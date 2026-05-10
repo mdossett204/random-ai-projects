@@ -25,6 +25,7 @@ import DailyVitals from "./components/DailyVitals";
 import WeeklyTraining, { DayWorkout } from "./components/WeeklyTraining";
 import PlantTracker from "./components/PlantTracker";
 import FoodLibrary from "./components/FoodLibrary";
+import ExerciseLibrary from "./components/ExerciseLibrary";
 import {
   defaultDailyData,
   defaultRituals,
@@ -74,6 +75,17 @@ const App: React.FC = () => {
   const [weeklyPlants, setWeeklyPlants] = useState<string[]>([]);
   const [workoutDetails, setWorkoutDetails] = useState<
     Record<string, DayWorkout>
+  >({});
+
+  const [customFoods, setCustomFoods] = useState<Record<string, string[]>>({});
+  const [removedFoods, setRemovedFoods] = useState<Record<string, string[]>>(
+    {},
+  );
+  const [customExercises, setCustomExercises] = useState<
+    Record<string, string[]>
+  >({});
+  const [removedExercises, setRemovedExercises] = useState<
+    Record<string, string[]>
   >({});
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -210,10 +222,39 @@ const App: React.FC = () => {
       ),
     );
 
+    const libraryRef = doc(
+      db,
+      "artifacts",
+      appId,
+      "users",
+      user.uid,
+      "tracking",
+      "library",
+    );
+    const unsubLibrary = onSnapshot(
+      libraryRef,
+      (s) => {
+        if (s.exists()) {
+          const data = s.data();
+          setCustomFoods(data.foods || {});
+          setRemovedFoods(data.removedFoods || {});
+          setCustomExercises(data.exercises || {});
+          setRemovedExercises(data.removedExercises || {});
+        } else {
+          setCustomFoods({});
+          setRemovedFoods({});
+          setCustomExercises({});
+          setRemovedExercises({});
+        }
+      },
+      (err) => console.error("Library Sync Error:", err),
+    );
+
     return () => {
       unsubDaily();
       unsubPlants();
       unsubDetails();
+      unsubLibrary();
     };
   }, [user, datestamp]);
 
@@ -250,13 +291,9 @@ const App: React.FC = () => {
   const addPlant = async (p: string) => {
     const rawInput = p.trim();
     if (!user || !rawInput) return;
-    const normalized = rawInput
-      .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
     if (
       weeklyPlants.some(
-        (existing) => existing.toLowerCase() === normalized.toLowerCase(),
+        (existing) => existing.toLowerCase() === rawInput.toLowerCase(),
       )
     )
       return;
@@ -269,7 +306,7 @@ const App: React.FC = () => {
       "tracking",
       "weeklyPlants",
     );
-    await setDoc(plantRef, { list: arrayUnion(normalized) }, { merge: true });
+    await setDoc(plantRef, { list: arrayUnion(rawInput) }, { merge: true });
   };
 
   const removePlant = async (p: string) => {
@@ -311,6 +348,114 @@ const App: React.FC = () => {
       );
       await setDoc(ref, { list: [] }, { merge: true });
     }
+  };
+
+  const addCustomFood = async (category: string, item: string) => {
+    if (!user) return;
+    const updated = { ...customFoods };
+    const removed = { ...removedFoods };
+    if (removed[category]) {
+      removed[category] = removed[category].filter((i) => i !== item);
+    }
+    if (!updated[category]) updated[category] = [];
+    if (!updated[category].includes(item)) {
+      updated[category] = [...updated[category], item];
+    }
+    const ref = doc(
+      db,
+      "artifacts",
+      appId,
+      "users",
+      user.uid,
+      "tracking",
+      "library",
+    );
+    await setDoc(
+      ref,
+      { foods: updated, removedFoods: removed },
+      { merge: true },
+    );
+  };
+
+  const removeCustomFood = async (category: string, item: string) => {
+    if (!user) return;
+    const updated = { ...customFoods };
+    const removed = { ...removedFoods };
+    if (updated[category]) {
+      updated[category] = updated[category].filter((i) => i !== item);
+    }
+    if (!removed[category]) removed[category] = [];
+    if (!removed[category].includes(item)) {
+      removed[category] = [...removed[category], item];
+    }
+    const ref = doc(
+      db,
+      "artifacts",
+      appId,
+      "users",
+      user.uid,
+      "tracking",
+      "library",
+    );
+    await setDoc(
+      ref,
+      { foods: updated, removedFoods: removed },
+      { merge: true },
+    );
+  };
+
+  const addCustomExercise = async (category: string, item: string) => {
+    if (!user) return;
+    const updated = { ...customExercises };
+    const removed = { ...removedExercises };
+    if (removed[category]) {
+      removed[category] = removed[category].filter((i) => i !== item);
+    }
+    if (!updated[category]) updated[category] = [];
+    if (!updated[category].includes(item)) {
+      updated[category] = [...updated[category], item];
+    }
+    const ref = doc(
+      db,
+      "artifacts",
+      appId,
+      "users",
+      user.uid,
+      "tracking",
+      "library",
+    );
+    await setDoc(
+      ref,
+      { exercises: updated, removedExercises: removed },
+      { merge: true },
+    );
+  };
+
+  const removeCustomExercise = async (category: string, item: string) => {
+    if (!user) return;
+    const updated = { ...customExercises };
+    const removed = { ...removedExercises };
+    if (updated[category]) {
+      updated[category] = updated[category].filter((i) => i !== item);
+    }
+    if (!removed[category]) removed[category] = [];
+    if (!removed[category].includes(item)) {
+      removed[category] = [...removed[category], item];
+    }
+    const ref = doc(
+      db,
+      "artifacts",
+      appId,
+      "users",
+      user.uid,
+      "tracking",
+      "library",
+    );
+    await setDoc(
+      ref,
+      { exercises: updated, removedExercises: removed },
+      { merge: true },
+    );
   };
 
   if (loading)
@@ -375,7 +520,24 @@ const App: React.FC = () => {
           )}
 
           {/* FOOD LIBRARY TAB */}
-          {activeTab === "food" && <FoodLibrary />}
+          {activeTab === "food" && (
+            <FoodLibrary
+              customFoods={customFoods}
+              removedFoods={removedFoods}
+              addCustomFood={addCustomFood}
+              removeCustomFood={removeCustomFood}
+            />
+          )}
+
+          {/* EXERCISE LIBRARY TAB */}
+          {activeTab === "exercises" && (
+            <ExerciseLibrary
+              customExercises={customExercises}
+              removedExercises={removedExercises}
+              addCustomExercise={addCustomExercise}
+              removeCustomExercise={removeCustomExercise}
+            />
+          )}
         </div>
       </div>
     </div>

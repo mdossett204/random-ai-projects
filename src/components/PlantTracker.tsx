@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Leaf, RotateCcw, Trash2, Plus, Sparkles } from "lucide-react";
 import { masterPlantList, foodLibrary } from "../data/constants";
+import { normalizeItem } from "../utils/textUtils";
 
 interface PlantTrackerProps {
   weeklyPlants: string[];
@@ -19,9 +20,14 @@ const PlantTracker: React.FC<PlantTrackerProps> = ({
   const [newPlant, setNewPlant] = useState("");
   const pct = Math.min((weeklyPlants.length / 30) * 100, 100);
 
+  const handleAddPlant = (p: string) => {
+    if (!p.trim()) return;
+    addPlant(normalizeItem(p));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addPlant(newPlant);
+    handleAddPlant(newPlant);
     setNewPlant("");
   };
 
@@ -129,19 +135,19 @@ const PlantTracker: React.FC<PlantTrackerProps> = ({
               .filter(
                 (p) =>
                   !foodLibrary["Animal Proteins"]?.some(
-                    (i) => i.toLowerCase() === p.toLowerCase(),
+                    (i) => normalizeItem(i) === p,
                   ),
               )
               .filter(
                 (p) =>
                   !foodLibrary["Healthy Fats"]?.some(
-                    (i) => i.toLowerCase() === p.toLowerCase(),
+                    (i) => normalizeItem(i) === p,
                   ),
               )
               .map((p) => (
                 <button
                   key={p}
-                  onClick={() => addPlant(p)}
+                  onClick={() => handleAddPlant(p)}
                   className="p-3 rounded-xl text-[11px] font-bold border border-slate-200 bg-white text-slate-600 hover:border-emerald-400 hover:bg-emerald-50/50 hover:text-emerald-700 transition-all text-left flex items-center justify-between group shadow-sm"
                 >
                   <span className="truncate">{p}</span>

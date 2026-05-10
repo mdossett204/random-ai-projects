@@ -1,5 +1,5 @@
 import React from "react";
-import { Clock, Calendar, Leaf, ShoppingBag } from "lucide-react";
+import { Clock, Calendar, Leaf, ShoppingBag, Activity } from "lucide-react";
 
 interface NavigationProps {
   activeTab: string;
@@ -32,6 +32,12 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
       icon: <ShoppingBag className="w-4 h-4" />,
       accent: "amber",
     },
+    {
+      id: "exercises",
+      label: "Exercise Library",
+      icon: <Activity className="w-4 h-4" />,
+      accent: "cyan",
+    },
   ];
 
   const accentMap: Record<string, string> = {
@@ -39,6 +45,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
     blue: "text-blue-600 bg-white shadow-md shadow-blue-100",
     emerald: "text-emerald-600 bg-white shadow-md shadow-emerald-100",
     amber: "text-amber-600 bg-white shadow-md shadow-amber-100",
+    cyan: "text-cyan-600 bg-white shadow-md shadow-cyan-100",
   };
 
   return (
