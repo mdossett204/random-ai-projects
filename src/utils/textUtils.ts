@@ -1,6 +1,8 @@
 // src/utils/textUtils.ts
 
 export const normalizeItem = (text: string): string => {
+  if (!text) return "";
+
   let normalized = text.toLowerCase().replace(/\s+/g, " ").trim();
 
   // Basic singularization rules
@@ -10,6 +12,12 @@ export const normalizeItem = (text: string): string => {
     normalized = normalized.slice(0, -2); // e.g., tomatoes -> tomato
   } else if (normalized.endsWith("sses")) {
     normalized = normalized.slice(0, -2); // e.g., glasses -> glass
+  } else if (
+    normalized.endsWith("ches") ||
+    normalized.endsWith("shes") ||
+    normalized.endsWith("xes")
+  ) {
+    normalized = normalized.slice(0, -2); // e.g., crunches -> crunch
   } else if (
     normalized.endsWith("s") &&
     !normalized.endsWith("ss") && // e.g., glass

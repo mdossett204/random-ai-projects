@@ -1,7 +1,7 @@
 // src/components/PlantTracker.tsx
-import React, { useState } from "react";
-import { Leaf, RotateCcw, Trash2, Plus, Sparkles } from "lucide-react";
-import { masterPlantList, foodLibrary } from "../data/constants";
+import React, { useState, useMemo } from "react";
+import { Leaf, RotateCcw, Trash2, Plus, Sparkles, X } from "lucide-react";
+import { foodLibrary } from "../data/constants";
 import { normalizeItem } from "../utils/textUtils";
 
 interface PlantTrackerProps {
@@ -9,6 +9,8 @@ interface PlantTrackerProps {
   resetWeekly: (type: "tasks" | "plants") => Promise<void>;
   addPlant: (p: string) => Promise<void>;
   removePlant: (p: string) => Promise<void>;
+  customFoods?: Record<string, string[]>;
+  removedFoods?: Record<string, string[]>;
 }
 
 const PlantTracker: React.FC<PlantTrackerProps> = ({
@@ -16,6 +18,8 @@ const PlantTracker: React.FC<PlantTrackerProps> = ({
   resetWeekly,
   addPlant,
   removePlant,
+  customFoods = {},
+  removedFoods = {},
 }) => {
   const [newPlant, setNewPlant] = useState("");
   const pct = Math.min((weeklyPlants.length / 30) * 100, 100);
@@ -30,6 +34,36 @@ const PlantTracker: React.FC<PlantTrackerProps> = ({
     handleAddPlant(newPlant);
     setNewPlant("");
   };
+
+  const availablePlants = useMemo(() => {
+    const list = new Set<string>();
+    const excludeCategories = ["Animal Proteins", "Healthy Fats"];
+
+    const allCategories = new Set([
+      ...Object.keys(foodLibrary),
+      ...Object.keys(customFoods),
+    ]);
+
+    allCategories.forEach((cat) => {
+      if (excludeCategories.includes(cat)) return;
+
+      const defaults = (foodLibrary[cat] || []).map(normalizeItem);
+      const customs = (customFoods[cat] || []).map(normalizeItem);
+      const removed = (removedFoods[cat] || []).map(normalizeItem);
+
+      [...defaults, ...customs].forEach((item) => {
+        const normalized = normalizeItem(item);
+        if (
+          !removed.includes(normalized) &&
+          !weeklyPlants.some((w) => normalizeItem(w) === normalized)
+        ) {
+          list.add(normalized);
+        }
+      });
+    });
+
+    return Array.from(list).sort((a, b) => a.localeCompare(b));
+  }, [customFoods, removedFoods, weeklyPlants]);
 
   return (
     <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
@@ -81,13 +115,27 @@ const PlantTracker: React.FC<PlantTrackerProps> = ({
 
         {/* Add input */}
         <form onSubmit={handleSubmit} className="flex gap-3 mb-8">
-          <input
-            type="text"
-            value={newPlant}
-            onChange={(e) => setNewPlant(e.target.value)}
-            placeholder="Add a plant (e.g. Radicchio, Buckwheat, Turmeric)..."
-            className="flex-grow p-4 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-sm outline-none focus:ring-2 focus:border-emerald-500 focus:ring-emerald-500/20 focus:bg-white transition-all shadow-sm"
-          />
+          <div className="flex-grow relative flex items-center">
+            <input
+              type="text"
+              list="plant-library"
+              value={newPlant}
+              onChange={(e) => setNewPlant(e.target.value)}
+              onFocus={(e) => e.target.select()}
+              placeholder="Add a plant (e.g. Radicchio, Buckwheat, Turmeric)..."
+              className="w-full p-4 pr-12 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-sm outline-none focus:ring-2 focus:border-emerald-500 focus:ring-emerald-500/20 focus:bg-white transition-all shadow-sm"
+            />
+            {newPlant && (
+              <button
+                type="button"
+                onClick={() => setNewPlant("")}
+                className="absolute right-4 p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors flex-shrink-0"
+                title="Clear to see full list"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
           <button
             type="submit"
             className="bg-emerald-500 hover:bg-emerald-400 text-white px-8 py-4 rounded-xl font-black transition-all active:scale-[0.97] whitespace-nowrap shadow-md shadow-emerald-100"
@@ -125,38 +173,25 @@ const PlantTracker: React.FC<PlantTrackerProps> = ({
             Master Botanical Selection
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {masterPlantList
-              .filter(
-                (p) =>
-                  !weeklyPlants.some(
-                    (w) => w.toLowerCase() === p.toLowerCase(),
-                  ),
-              )
-              .filter(
-                (p) =>
-                  !foodLibrary["Animal Proteins"]?.some(
-                    (i) => normalizeItem(i) === p,
-                  ),
-              )
-              .filter(
-                (p) =>
-                  !foodLibrary["Healthy Fats"]?.some(
-                    (i) => normalizeItem(i) === p,
-                  ),
-              )
-              .map((p) => (
-                <button
-                  key={p}
-                  onClick={() => handleAddPlant(p)}
-                  className="p-3 rounded-xl text-[11px] font-bold border border-slate-200 bg-white text-slate-600 hover:border-emerald-400 hover:bg-emerald-50/50 hover:text-emerald-700 transition-all text-left flex items-center justify-between group shadow-sm"
-                >
-                  <span className="truncate">{p}</span>
-                  <Plus className="w-3 h-3 opacity-0 group-hover:opacity-100 text-emerald-500 flex-shrink-0 transition-opacity" />
-                </button>
-              ))}
+            {availablePlants.map((p) => (
+              <button
+                key={p}
+                onClick={() => handleAddPlant(p)}
+                className="p-3 rounded-xl text-[11px] font-bold border border-slate-200 bg-white text-slate-600 hover:border-emerald-400 hover:bg-emerald-50/50 hover:text-emerald-700 transition-all text-left flex items-center justify-between group shadow-sm"
+              >
+                <span className="truncate">{p}</span>
+                <Plus className="w-3 h-3 opacity-0 group-hover:opacity-100 text-emerald-500 flex-shrink-0 transition-opacity" />
+              </button>
+            ))}
           </div>
         </div>
       </div>
+
+      <datalist id="plant-library">
+        {availablePlants.map((p) => (
+          <option key={p} value={p} />
+        ))}
+      </datalist>
     </div>
   );
 };

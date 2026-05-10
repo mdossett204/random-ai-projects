@@ -1,28 +1,117 @@
 // src/components/WeeklyTraining.tsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Calendar,
   RotateCcw,
-  Target,
   Activity,
   Plus,
   Trash2,
+  ChevronUp,
+  ChevronDown,
+  Copy,
+  Clipboard,
+  Check,
+  AlertCircle,
+  X,
+  CheckCircle,
+  Circle,
 } from "lucide-react";
+import { exerciseLibrary } from "../data/constants";
+import { normalizeItem } from "../utils/textUtils";
 
-interface Exercise {
-  name: string;
-  "Weight (pounds)": string;
-  rep: string;
+export interface WorkoutSet {
+  id: string;
+  weight?: string;
+  reps?: string;
   duration?: string;
+  durationUnit?: "min" | "sec";
+}
+
+export interface Exercise {
+  id: string;
+  type: "strength" | "cardio" | "ab" | "balance" | "mobility";
+  name: string;
   notes: string;
+  sets: WorkoutSet[];
+  completed?: boolean;
+  trackingType?: "reps" | "duration";
+  weightType?: "weight" | "bodyweight";
 }
 
 export interface DayWorkout {
-  type?: "strength" | "cardio";
   title: string;
   exercises: Exercise[];
   additionalNotes: string;
 }
+
+const generateId = () => Math.random().toString(36).substr(2, 9);
+
+const emptySet = (): WorkoutSet => ({
+  id: generateId(),
+  weight: "",
+  reps: "",
+  duration: "",
+  durationUnit: "min",
+});
+
+const emptyExercise = (type: Exercise["type"] = "strength"): Exercise => ({
+  id: generateId(),
+  type,
+  name: "",
+  notes: "",
+  sets: [emptySet()],
+  completed: false,
+  trackingType: "reps",
+  weightType: "weight",
+});
+
+interface LegacyExercise {
+  name?: string;
+  "Weight (pounds)"?: string;
+  rep?: string;
+  duration?: string;
+  notes?: string;
+  sets?: WorkoutSet[];
+  completed?: boolean;
+  trackingType?: "reps" | "duration";
+  weightType?: "weight" | "bodyweight";
+}
+
+const normalizeSavedExercises = (
+  data?: DayWorkout | { exercises?: LegacyExercise[] },
+): Exercise[] => {
+  const old = data?.exercises;
+  if (!old || !Array.isArray(old) || old.length === 0) return [];
+  if ("id" in old[0] && "type" in old[0]) return old as Exercise[]; // Already migrated
+
+  // Migrate legacy structure
+  const migrated = (old as LegacyExercise[])
+    .filter(
+      (ex) =>
+        ex.name || ex["Weight (pounds)"] || ex.rep || ex.duration || ex.notes,
+    )
+    .map(
+      (ex): Exercise => ({
+        id: generateId(),
+        type: ex.duration ? "cardio" : "strength",
+        name: ex.name || "",
+        notes: ex.notes || "",
+        completed: ex.completed || false,
+        trackingType: ex.trackingType || "reps",
+        weightType: ex.weightType || "weight",
+        sets: [
+          {
+            id: generateId(),
+            weight: ex["Weight (pounds)"] || "",
+            reps: ex.rep || "",
+            duration: ex.duration || "",
+            durationUnit: "min",
+          },
+        ],
+      }),
+    );
+  return migrated;
+};
 
 interface WeeklyTrainingProps {
   workoutDetails: Record<string, DayWorkout>;
@@ -31,21 +120,66 @@ interface WeeklyTrainingProps {
   >;
   updateWorkoutDetail: (day: string, data: DayWorkout) => Promise<void>;
   resetWeekly: (type: "tasks" | "plants") => Promise<void>;
+  customExercises?: Record<string, string[]>;
+  removedExercises?: Record<string, string[]>;
+  clipboard?: { day: DayWorkout | null; exercise: Exercise | null };
+  updateClipboard?: (
+    updates: Partial<{ day: DayWorkout | null; exercise: Exercise | null }>,
+  ) => Promise<void>;
+  addCustomExercise?: (category: string, item: string) => Promise<void>;
 }
 
-const emptyExercise = (): Exercise => ({
-  name: "",
-  "Weight (pounds)": "",
-  rep: "",
-  duration: "",
-  notes: "",
-});
+interface ConfirmModalProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  confirmText?: string;
+}
 
-const getInitialExercises = (exercises?: Exercise[]) => {
-  if (!exercises) {
-    return Array.from({ length: 6 }, emptyExercise);
-  }
-  return exercises;
+const ConfirmModal = ({
+  isOpen,
+  title,
+  message,
+  onConfirm,
+  onCancel,
+  confirmText = "Delete",
+}: ConfirmModalProps) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl p-6 shadow-xl max-w-sm w-full animate-in zoom-in-95 duration-200">
+        <div className="flex items-center gap-3 text-rose-600 mb-4">
+          <AlertCircle className="w-6 h-6" />
+          <h3 className="font-black text-lg">{title}</h3>
+        </div>
+        <p className="text-slate-600 font-medium mb-6 text-sm">{message}</p>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-100 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 rounded-xl text-sm font-black text-white bg-rose-500 hover:bg-rose-600 transition-colors shadow-md shadow-rose-200"
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CATEGORY_MAP: Record<string, string> = {
+  cardio: "Cardio Exercises",
+  strength: "Resistance Training",
+  ab: "Ab Training",
+  balance: "Balance and Core Training",
+  mobility: "Mobility Training",
 };
 
 interface DayCardProps {
@@ -54,6 +188,12 @@ interface DayCardProps {
   data?: DayWorkout;
   onUpdate: (day: string, data: DayWorkout) => void;
   onSave: (day: string, data: DayWorkout) => Promise<void>;
+  copiedDay: DayWorkout | null;
+  setCopiedDay: (d: DayWorkout | null) => void;
+  copiedExercise: Exercise | null;
+  setCopiedExercise: (e: Exercise | null) => void;
+  exerciseLists: Record<string, string[]>;
+  addCustomExercise?: (category: string, item: string) => Promise<void>;
 }
 
 const DayCard = ({
@@ -62,42 +202,53 @@ const DayCard = ({
   data,
   onUpdate,
   onSave,
+  copiedDay,
+  setCopiedDay,
+  copiedExercise,
+  setCopiedExercise,
+  exerciseLists,
+  addCustomExercise,
 }: DayCardProps) => {
-  const workout: DayWorkout = data
-    ? {
-        type: data.type || "strength",
-        title: data.title || defaultTitle,
-        exercises: getInitialExercises(data.exercises),
-        additionalNotes: data.additionalNotes || "",
-      }
-    : {
-        type: "strength",
-        title: defaultTitle,
-        exercises: getInitialExercises(),
-        additionalNotes: "",
-      };
+  const [localData, setLocalData] = useState<DayWorkout>(() => ({
+    title: data?.title || defaultTitle,
+    exercises: normalizeSavedExercises(data),
+    additionalNotes: data?.additionalNotes || "",
+  }));
 
-  const [localData, setLocalData] = useState<DayWorkout>(workout);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isCardio = localData.type === "cardio";
+  const [deleteExerciseIndex, setDeleteExerciseIndex] = useState<number | null>(
+    null,
+  );
+  const [showCopyFeedback, setShowCopyFeedback] = useState(false);
+  const [showClearDayConfirm, setShowClearDayConfirm] = useState(false);
+  const [showPasteDayConfirm, setShowPasteDayConfirm] = useState(false);
+
+  // Safety mechanism to guarantee data saves to Firebase if you immediately switch tabs
+  // before the 1-second debounce timeout finishes.
+  const latestDataRef = useRef(localData);
+  const latestSaveRef = useRef(onSave);
+  useEffect(() => {
+    latestDataRef.current = localData;
+  }, [localData]);
+  useEffect(() => {
+    latestSaveRef.current = onSave;
+  }, [onSave]);
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        latestSaveRef.current(day, latestDataRef.current);
+      }
+    };
+  }, [day]);
 
   useEffect(() => {
-    if (data) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLocalData({
-        type: data.type || "strength",
-        title: data.title || defaultTitle,
-        exercises: getInitialExercises(data.exercises),
-        additionalNotes: data.additionalNotes || "",
-      });
-    } else {
-      setLocalData({
-        type: "strength",
-        title: defaultTitle,
-        exercises: getInitialExercises(),
-        additionalNotes: "",
-      });
-    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLocalData({
+      title: data?.title || defaultTitle,
+      exercises: normalizeSavedExercises(data),
+      additionalNotes: data?.additionalNotes || "",
+    });
   }, [data, defaultTitle]);
 
   const handleChange = (updater: (prev: DayWorkout) => DayWorkout) => {
@@ -108,6 +259,7 @@ const DayCard = ({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       onSave(day, newData);
+      debounceRef.current = null;
     }, 1000);
   };
 
@@ -117,215 +269,526 @@ const DayCard = ({
   const handleAdditionalNotes = (e: React.ChangeEvent<HTMLTextAreaElement>) =>
     handleChange((prev) => ({ ...prev, additionalNotes: e.target.value }));
 
-  const handleExerciseChange = (
-    index: number,
-    field: keyof Exercise,
-    value: string,
-  ) => {
-    handleChange((prev) => {
-      const newExercises = [...(prev.exercises || [])];
-      // Ensure we have enough rows
-      while (newExercises.length <= index) {
-        newExercises.push(emptyExercise());
-      }
-      newExercises[index] = { ...newExercises[index], [field]: value };
-      return { ...prev, exercises: newExercises };
-    });
+  const handleCopyDay = () => {
+    setCopiedDay(localData);
+    setShowCopyFeedback(true);
+    setTimeout(() => setShowCopyFeedback(false), 2000);
   };
 
-  const removeExercise = (index: number) => {
-    handleChange((prev) => {
-      const newExercises = [...(prev.exercises || [])];
-      newExercises.splice(index, 1);
-      return { ...prev, exercises: newExercises };
-    });
-  };
-
-  const addExercise = () => {
+  const confirmPasteDay = () => {
+    if (!copiedDay) return;
+    const newExercises = copiedDay.exercises.map((ex) => ({
+      ...ex,
+      id: generateId(),
+      completed: false,
+      sets: ex.sets.map((s) => ({ ...s, id: generateId() })),
+    }));
     handleChange((prev) => ({
       ...prev,
-      exercises: [...(prev.exercises || []), emptyExercise()],
+      title: copiedDay.title,
+      exercises: newExercises,
+      additionalNotes: copiedDay.additionalNotes,
     }));
+    setShowPasteDayConfirm(false);
   };
 
-  const filledCount =
-    localData.exercises?.filter((e) => e.name.trim()).length || 0;
+  const handleClearDay = () => {
+    handleChange((prev) => ({
+      ...prev,
+      title: "",
+      exercises: [],
+      additionalNotes: "",
+    }));
+    setShowClearDayConfirm(false);
+  };
+
+  const addExerciseAt = (index: number, exToInsert?: Exercise) => {
+    handleChange((prev) => {
+      const arr = [...prev.exercises];
+      const newEx = exToInsert
+        ? {
+            ...exToInsert,
+            id: generateId(),
+            completed: false,
+            sets: exToInsert.sets.map((s) => ({ ...s, id: generateId() })),
+          }
+        : emptyExercise();
+      arr.splice(index, 0, newEx);
+      return { ...prev, exercises: arr };
+    });
+  };
+
+  const confirmRemoveExercise = () => {
+    if (deleteExerciseIndex === null) return;
+    handleChange((prev) => {
+      const arr = [...prev.exercises];
+      arr.splice(deleteExerciseIndex, 1);
+      return { ...prev, exercises: arr };
+    });
+    setDeleteExerciseIndex(null);
+  };
+
+  const moveExercise = (index: number, direction: -1 | 1) => {
+    handleChange((prev) => {
+      const arr = [...prev.exercises];
+      if (index + direction < 0 || index + direction >= arr.length) return prev;
+      const temp = arr[index];
+      arr[index] = arr[index + direction];
+      arr[index + direction] = temp;
+      return { ...prev, exercises: arr };
+    });
+  };
+
+  const updateExercise = <K extends keyof Exercise>(
+    eIdx: number,
+    field: K,
+    value: Exercise[K],
+  ) => {
+    handleChange((prev) => {
+      const arr = [...prev.exercises];
+      arr[eIdx] = { ...arr[eIdx], [field]: value } as Exercise;
+      return { ...prev, exercises: arr };
+    });
+  };
+
+  const addSet = (eIdx: number) => {
+    handleChange((prev) => {
+      const arr = [...prev.exercises];
+      const sets = arr[eIdx].sets;
+      const lastSet = sets.length > 0 ? sets[sets.length - 1] : null;
+      const newSet = emptySet();
+      if (lastSet) {
+        newSet.weight = lastSet.weight;
+        newSet.reps = lastSet.reps;
+        newSet.duration = lastSet.duration;
+        newSet.durationUnit = lastSet.durationUnit || "min";
+      }
+      arr[eIdx] = { ...arr[eIdx], sets: [...sets, newSet] };
+      return { ...prev, exercises: arr };
+    });
+  };
+
+  const updateSet = <K extends keyof WorkoutSet>(
+    eIdx: number,
+    sIdx: number,
+    field: K,
+    value: WorkoutSet[K],
+  ) => {
+    handleChange((prev) => {
+      const arr = [...prev.exercises];
+      const sets = [...arr[eIdx].sets];
+      sets[sIdx] = { ...sets[sIdx], [field]: value } as WorkoutSet;
+      arr[eIdx] = { ...arr[eIdx], sets } as Exercise;
+      return { ...prev, exercises: arr };
+    });
+  };
+
+  const removeSet = (eIdx: number, sIdx: number) => {
+    handleChange((prev) => {
+      const arr = [...prev.exercises];
+      const sets = [...arr[eIdx].sets];
+      sets.splice(sIdx, 1);
+      arr[eIdx] = { ...arr[eIdx], sets };
+      return { ...prev, exercises: arr };
+    });
+  };
 
   return (
-    <div className="bg-white rounded-3xl p-6 border border-slate-200/60 shadow-sm flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       {/* Header & Title */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-4 gap-4">
-        <div className="flex items-center justify-between md:justify-start gap-4 w-full md:w-auto">
-          <span className="text-sm font-black text-slate-400 uppercase tracking-widest w-24 flex-shrink-0">
+      <div className="bg-white rounded-3xl p-6 border border-slate-200/60 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-black text-slate-400 uppercase tracking-widest">
             {day}
           </span>
-          <select
-            value={localData.type || "strength"}
-            onChange={(e) =>
-              handleChange((prev) => ({
-                ...prev,
-                type: e.target.value as "strength" | "cardio",
-              }))
-            }
-            className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-indigo-600 focus:ring-2 focus:border-indigo-500 outline-none transition-all cursor-pointer"
-          >
-            <option value="strength">Strength</option>
-            <option value="cardio">Cardio</option>
-          </select>
-          <span
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold ${
-              isCardio
-                ? "bg-orange-50 text-orange-600 border border-orange-200"
-                : "bg-blue-50 text-blue-600 border border-blue-200"
-            }`}
-          >
-            {isCardio ? (
-              <Activity className="w-3 h-3" />
-            ) : (
-              <Target className="w-3 h-3" />
-            )}
-            {filledCount} exercises
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+            <Activity className="w-3 h-3" /> {localData.exercises.length}{" "}
+            exercises
           </span>
         </div>
-        <input
-          type="text"
-          value={localData.title}
-          onChange={handleTitleChange}
-          placeholder="Workout Focus"
-          className="flex-grow bg-slate-50 border border-slate-200 rounded-xl p-3 text-lg font-bold text-center text-slate-900 focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 focus:bg-white outline-none transition-all"
-        />
+        <div className="flex-grow max-w-md">
+          <input
+            type="text"
+            value={localData.title}
+            onChange={handleTitleChange}
+            placeholder="Workout Focus (e.g. Pull Day)"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-lg font-bold text-center text-slate-900 focus:ring-2 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleCopyDay}
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-blue-600 hover:bg-blue-100 transition-colors flex-1 md:flex-auto"
+          >
+            {showCopyFeedback ? (
+              <Check className="w-4 h-4" />
+            ) : (
+              <Copy className="w-4 h-4" />
+            )}
+            {showCopyFeedback ? "Copied!" : "Copy Day"}
+          </button>
+          <button
+            onClick={() => setShowPasteDayConfirm(true)}
+            disabled={!copiedDay}
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-amber-600 hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-1 md:flex-auto"
+          >
+            <Clipboard className="w-4 h-4" /> Paste
+          </button>
+          <button
+            onClick={() => setShowClearDayConfirm(true)}
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-100 transition-colors flex-1 md:flex-auto"
+          >
+            <RotateCcw className="w-4 h-4" /> Clear Day
+          </button>
+        </div>
       </div>
 
-      {/* 6 Lines of Exercises */}
-      <div className="space-y-2">
-        {localData.type === "cardio" ? (
-          <div className="hidden md:grid grid-cols-12 gap-2 px-2">
-            <span className="col-span-4 text-[10px] font-bold text-center uppercase text-slate-400 tracking-widest">
-              Activity Name
-            </span>
-            <span className="col-span-4 text-[10px] font-bold text-center uppercase text-slate-400 tracking-widest">
-              Duration / Distance
-            </span>
-            <span className="col-span-3 text-[10px] font-bold text-center uppercase text-slate-400 tracking-widest">
-              Notes
-            </span>
-            <span className="col-span-1"></span>
-          </div>
-        ) : (
-          <div className="hidden md:grid grid-cols-12 gap-2 px-2">
-            <span className="col-span-4 text-[10px] font-bold text-center uppercase text-slate-400 tracking-widest">
-              Exercise Name
-            </span>
-            <span className="col-span-2 text-[10px] font-bold text-center uppercase text-slate-400 tracking-widest">
-              Weight (pounds)
-            </span>
-            <span className="col-span-2 text-[10px] font-bold text-center uppercase text-slate-400 tracking-widest">
-              Reps
-            </span>
-            <span className="col-span-3 text-[10px] font-bold text-center uppercase text-slate-400 tracking-widest">
-              Notes
-            </span>
-            <span className="col-span-1"></span>
-          </div>
-        )}
+      {/* Exercise List */}
+      <div className="space-y-4">
+        {localData.exercises.map((ex, index) => {
+          const isStrength = ex.type === "strength";
+          const isCardio = ex.type === "cardio";
+          const isOther = !isStrength && !isCardio;
 
-        {(localData.exercises || []).map((ex, i) => {
+          const currentWeightType = ex.weightType || "weight";
+          const currentTrackingType = ex.trackingType || "reps";
+
+          const showWeight =
+            isStrength || (isOther && currentWeightType === "weight");
+          const showReps =
+            isStrength || (isOther && currentTrackingType === "reps");
+          const showDuration =
+            isCardio || (isOther && currentTrackingType === "duration");
+
           return (
-            <div key={i} className="grid grid-cols-1 md:grid-cols-12 gap-2">
-              {localData.type === "cardio" ? (
-                <>
+            <div
+              key={ex.id}
+              className={`border rounded-2xl overflow-hidden shadow-sm transition-all duration-300 ${
+                ex.completed
+                  ? "border-emerald-200 bg-emerald-50/40 opacity-75"
+                  : "border-slate-200 bg-white"
+              }`}
+            >
+              {/* Exercise Header */}
+              <div className="bg-slate-50 p-3 flex flex-col md:flex-row gap-3 justify-between items-start md:items-center border-b border-slate-200">
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full md:flex-1">
+                  <button
+                    onClick={() =>
+                      updateExercise(index, "completed", !ex.completed)
+                    }
+                    className={`flex-shrink-0 transition-colors ${
+                      ex.completed
+                        ? "text-emerald-500"
+                        : "text-slate-300 hover:text-emerald-400"
+                    }`}
+                    title={
+                      ex.completed ? "Mark as incomplete" : "Mark as complete"
+                    }
+                  >
+                    {ex.completed ? (
+                      <CheckCircle className="w-6 h-6 fill-emerald-100" />
+                    ) : (
+                      <Circle className="w-6 h-6" />
+                    )}
+                  </button>
+                  <select
+                    value={ex.type}
+                    onChange={(e) => {
+                      const newType = e.target.value as Exercise["type"];
+                      if (newType !== ex.type) {
+                        handleChange((prev) => {
+                          const arr = [...prev.exercises];
+                          arr[index] = {
+                            ...arr[index],
+                            type: newType,
+                            name: "", // Automatically clear name when changing category type
+                          } as Exercise;
+                          return { ...prev, exercises: arr };
+                        });
+                      }
+                    }}
+                    className="bg-white border border-slate-200 p-2.5 rounded-xl text-xs font-bold text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+                  >
+                    <option value="strength">Strength</option>
+                    <option value="cardio">Cardio</option>
+                    <option value="ab">Ab</option>
+                    <option value="balance">Balance</option>
+                    <option value="mobility">Mobility</option>
+                  </select>
+
+                  {isOther && (
+                    <>
+                      <select
+                        value={ex.trackingType || "reps"}
+                        onChange={(e) =>
+                          updateExercise(
+                            index,
+                            "trackingType",
+                            e.target.value as Exercise["trackingType"],
+                          )
+                        }
+                        className="bg-white border border-slate-200 p-2.5 rounded-xl text-[11px] font-bold text-slate-500 outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+                      >
+                        <option value="reps">Reps</option>
+                        <option value="duration">Duration</option>
+                      </select>
+                      <select
+                        value={ex.weightType || "weight"}
+                        onChange={(e) =>
+                          updateExercise(
+                            index,
+                            "weightType",
+                            e.target.value as Exercise["weightType"],
+                          )
+                        }
+                        className="bg-white border border-slate-200 p-2.5 rounded-xl text-[11px] font-bold text-slate-500 outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+                      >
+                        <option value="weight">Weighted</option>
+                        <option value="bodyweight">Bodyweight</option>
+                      </select>
+                    </>
+                  )}
+
                   <input
-                    type="text"
-                    placeholder="Activity Name"
+                    list={`library-${ex.type}`}
                     value={ex.name}
                     onChange={(e) =>
-                      handleExerciseChange(i, "name", e.target.value)
+                      updateExercise(index, "name", e.target.value)
                     }
-                    className="md:col-span-4 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold text-center text-slate-800 focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 focus:bg-white outline-none transition-all"
+                    onFocus={(e) => e.target.select()}
+                    placeholder="Exercise Name..."
+                    className="flex-grow bg-white border border-slate-200 p-2.5 rounded-xl text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/50 w-full min-w-[200px]"
                   />
-                  <input
-                    type="text"
-                    placeholder="Duration / Distance"
-                    value={ex.duration || ""}
-                    onChange={(e) =>
-                      handleExerciseChange(i, "duration", e.target.value)
-                    }
-                    className="md:col-span-4 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold text-center text-slate-800 focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 focus:bg-white outline-none transition-all"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Notes"
-                    value={ex.notes}
-                    onChange={(e) =>
-                      handleExerciseChange(i, "notes", e.target.value)
-                    }
-                    className="md:col-span-3 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold text-center text-slate-800 focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 focus:bg-white outline-none transition-all"
-                  />
+                  {ex.name && (
+                    <button
+                      onClick={() => updateExercise(index, "name", "")}
+                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors flex-shrink-0"
+                      title="Clear exercise to see full list"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                  {ex.name.trim() !== "" &&
+                    !exerciseLists[ex.type].some(
+                      (i) => i === normalizeItem(ex.name),
+                    ) &&
+                    addCustomExercise && (
+                      <button
+                        onClick={() => {
+                          const normalized = normalizeItem(ex.name);
+                          addCustomExercise(CATEGORY_MAP[ex.type], normalized);
+                          updateExercise(index, "name", normalized);
+                        }}
+                        className="px-3 py-2 bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-bold rounded-xl transition-colors whitespace-nowrap flex-shrink-0"
+                      >
+                        Save to Library
+                      </button>
+                    )}
+                </div>
+                <div className="flex items-center gap-1 w-full md:w-auto justify-end flex-shrink-0">
                   <button
-                    onClick={() => removeExercise(i)}
-                    title="Remove exercise"
-                    className="md:col-span-1 flex items-center justify-center p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 border border-transparent hover:border-rose-100 rounded-xl transition-all outline-none focus:ring-2 focus:ring-rose-200"
+                    onClick={() => addExerciseAt(index)}
+                    title="Add Exercise Above"
+                    className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                  <button
+                    disabled={index === 0}
+                    onClick={() => moveExercise(index, -1)}
+                    className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronUp className="w-4 h-4" />
+                  </button>
+                  <button
+                    disabled={index === localData.exercises.length - 1}
+                    onClick={() => moveExercise(index, 1)}
+                    className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setCopiedExercise(ex)}
+                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    title="Copy Exercise"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                  <button
+                    disabled={!copiedExercise}
+                    onClick={() => addExerciseAt(index + 1, copiedExercise!)}
+                    className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg disabled:opacity-30 transition-colors"
+                    title="Paste Below"
+                  >
+                    <Clipboard className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setDeleteExerciseIndex(index)}
+                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
-                </>
-              ) : (
-                <>
+                </div>
+              </div>
+
+              {/* Sets & Notes */}
+              <div className="p-4 space-y-3 bg-white">
+                {/* Columns Header */}
+                <div className="grid grid-cols-12 gap-2 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
+                  <div className="col-span-2 md:col-span-1">Set</div>
+                  {showWeight && (
+                    <div
+                      className={
+                        showReps || showDuration
+                          ? "col-span-4 md:col-span-5"
+                          : "col-span-8 md:col-span-10"
+                      }
+                    >
+                      Weight (lbs)
+                    </div>
+                  )}
+                  {showReps && (
+                    <div
+                      className={
+                        showWeight
+                          ? "col-span-4 md:col-span-5"
+                          : "col-span-8 md:col-span-10"
+                      }
+                    >
+                      Reps
+                    </div>
+                  )}
+                  {showDuration && (
+                    <div
+                      className={
+                        showWeight
+                          ? "col-span-4 md:col-span-5"
+                          : "col-span-8 md:col-span-10"
+                      }
+                    >
+                      Duration
+                    </div>
+                  )}
+                  <div className="col-span-2 md:col-span-1"></div>
+                </div>
+
+                {ex.sets.map((set, sIdx) => (
+                  <div
+                    key={set.id}
+                    className="grid grid-cols-12 gap-2 items-center"
+                  >
+                    <div className="col-span-2 md:col-span-1 text-center text-xs font-bold text-slate-400">
+                      {sIdx + 1}
+                    </div>
+                    {showWeight && (
+                      <div
+                        className={
+                          showReps || showDuration
+                            ? "col-span-4 md:col-span-5"
+                            : "col-span-8 md:col-span-10"
+                        }
+                      >
+                        <input
+                          type="text"
+                          value={set.weight || ""}
+                          onChange={(e) =>
+                            updateSet(index, sIdx, "weight", e.target.value)
+                          }
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-center text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/50"
+                          placeholder="e.g. 135"
+                        />
+                      </div>
+                    )}
+                    {showReps && (
+                      <div
+                        className={
+                          showWeight
+                            ? "col-span-4 md:col-span-5"
+                            : "col-span-8 md:col-span-10"
+                        }
+                      >
+                        <input
+                          type="text"
+                          value={set.reps || ""}
+                          onChange={(e) =>
+                            updateSet(index, sIdx, "reps", e.target.value)
+                          }
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-center text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/50"
+                          placeholder="e.g. 10"
+                        />
+                      </div>
+                    )}
+                    {showDuration && (
+                      <div
+                        className={`${showWeight ? "col-span-4 md:col-span-5" : "col-span-8 md:col-span-10"} flex gap-1`}
+                      >
+                        <input
+                          type="text"
+                          value={set.duration || ""}
+                          onChange={(e) =>
+                            updateSet(index, sIdx, "duration", e.target.value)
+                          }
+                          className="w-full min-w-0 bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-center text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/50"
+                          placeholder="e.g. 30"
+                        />
+                        <select
+                          value={set.durationUnit || "min"}
+                          onChange={(e) =>
+                            updateSet(
+                              index,
+                              sIdx,
+                              "durationUnit",
+                              e.target.value as WorkoutSet["durationUnit"],
+                            )
+                          }
+                          className="bg-slate-50 border border-slate-200 rounded-lg p-1 text-[10px] font-bold text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+                        >
+                          <option value="min">min</option>
+                          <option value="sec">sec</option>
+                        </select>
+                      </div>
+                    )}
+                    <div className="col-span-2 md:col-span-1 flex justify-center">
+                      <button
+                        onClick={() => removeSet(index, sIdx)}
+                        className="p-2 text-slate-300 hover:text-rose-500 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="flex items-center pt-1">
+                  <button
+                    onClick={() => addSet(index)}
+                    className="text-[11px] font-bold text-indigo-500 hover:text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" /> Add Set
+                  </button>
+                </div>
+
+                <div className="pt-2">
                   <input
                     type="text"
-                    placeholder="Exercise Name"
-                    value={ex.name}
-                    onChange={(e) =>
-                      handleExerciseChange(i, "name", e.target.value)
-                    }
-                    className="md:col-span-4 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold text-center text-slate-800 focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 focus:bg-white outline-none transition-all"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Weight (pounds)"
-                    value={ex["Weight (pounds)"]}
-                    onChange={(e) =>
-                      handleExerciseChange(i, "Weight (pounds)", e.target.value)
-                    }
-                    className="md:col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold text-center text-slate-800 focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 focus:bg-white outline-none transition-all"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Reps"
-                    value={ex.rep}
-                    onChange={(e) =>
-                      handleExerciseChange(i, "rep", e.target.value)
-                    }
-                    className="md:col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold text-center text-slate-800 focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 focus:bg-white outline-none transition-all"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Notes"
                     value={ex.notes}
                     onChange={(e) =>
-                      handleExerciseChange(i, "notes", e.target.value)
+                      updateExercise(index, "notes", e.target.value)
                     }
-                    className="md:col-span-3 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold text-center text-slate-800 focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 focus:bg-white outline-none transition-all"
+                    placeholder="Exercise notes..."
+                    className="w-full text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-100 p-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/20"
                   />
-                  <button
-                    onClick={() => removeExercise(i)}
-                    title="Remove exercise"
-                    className="md:col-span-1 flex items-center justify-center p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 border border-transparent hover:border-rose-100 rounded-xl transition-all outline-none focus:ring-2 focus:ring-rose-200"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </>
-              )}
+                </div>
+              </div>
             </div>
           );
         })}
 
-        {/* Add Exercise Row Button */}
         <button
-          onClick={addExercise}
-          className="w-full mt-3 p-3 rounded-xl border-2 border-dashed border-slate-200 text-slate-400 font-bold text-xs hover:bg-slate-50 hover:border-blue-300 hover:text-blue-500 transition-all flex items-center justify-center gap-2"
+          onClick={() => addExerciseAt(localData.exercises.length)}
+          className="w-full p-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold text-sm hover:bg-slate-50 hover:text-indigo-500 hover:border-indigo-200 transition-colors flex justify-center items-center gap-2"
         >
-          <Plus className="w-4 h-4" /> Add Exercise
+          <Plus className="w-5 h-5" /> Add New Exercise
         </button>
       </div>
 
@@ -333,8 +796,33 @@ const DayCard = ({
       <textarea
         value={localData.additionalNotes}
         onChange={handleAdditionalNotes}
-        placeholder="Additional notes for this day..."
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-bold text-center text-slate-800 focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 focus:bg-white outline-none transition-all resize-none min-h-[80px] mt-2"
+        placeholder="Additional notes for this day (e.g. felt great, energy was high)..."
+        className="w-full bg-white border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all resize-none min-h-[100px] shadow-sm"
+      />
+
+      <ConfirmModal
+        isOpen={deleteExerciseIndex !== null}
+        title="Delete Exercise"
+        message="Are you sure you want to remove this exercise and all its sets?"
+        onConfirm={confirmRemoveExercise}
+        onCancel={() => setDeleteExerciseIndex(null)}
+      />
+
+      <ConfirmModal
+        isOpen={showPasteDayConfirm}
+        title={`Overwrite ${day}?`}
+        message={`Are you sure you want to overwrite ${day}'s workout? This will permanently replace your current exercises and notes for this day.`}
+        onConfirm={confirmPasteDay}
+        onCancel={() => setShowPasteDayConfirm(false)}
+        confirmText="Overwrite"
+      />
+
+      <ConfirmModal
+        isOpen={showClearDayConfirm}
+        title={`Clear ${day}`}
+        message={`Are you sure you want to clear all workouts and notes for ${day}? This action cannot be undone.`}
+        onConfirm={handleClearDay}
+        onCancel={() => setShowClearDayConfirm(false)}
       />
     </div>
   );
@@ -345,6 +833,11 @@ const WeeklyTraining: React.FC<WeeklyTrainingProps> = ({
   setWorkoutDetails,
   updateWorkoutDetail,
   resetWeekly,
+  customExercises,
+  removedExercises = {},
+  clipboard = { day: null, exercise: null },
+  updateClipboard,
+  addCustomExercise,
 }) => {
   const days = [
     "Monday",
@@ -356,6 +849,42 @@ const WeeklyTraining: React.FC<WeeklyTrainingProps> = ({
     "Sunday",
   ];
   const [selectedDay, setSelectedDay] = useState("Monday");
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  const copiedDay = clipboard.day;
+  const copiedExercise = clipboard.exercise;
+  const setCopiedDay = (day: DayWorkout | null) => updateClipboard?.({ day });
+  const setCopiedExercise = (exercise: Exercise | null) =>
+    updateClipboard?.({ exercise });
+
+  // Map the internal types to the datalist keys
+  const exerciseLists = useMemo(() => {
+    const lists: Record<string, string[]> = {
+      cardio: [],
+      strength: [],
+      ab: [],
+      balance: [],
+      mobility: [],
+    };
+
+    (Object.keys(CATEGORY_MAP) as (keyof typeof CATEGORY_MAP)[]).forEach(
+      (key) => {
+        const catName = CATEGORY_MAP[key];
+        const defaults = (exerciseLibrary[catName] || []).map(normalizeItem);
+        const customs = (customExercises?.[catName] || []).map(normalizeItem);
+        const removed = (removedExercises[catName] || []).map(normalizeItem);
+        lists[key] = Array.from(new Set([...defaults, ...customs]))
+          .filter((ex) => !removed.includes(ex))
+          .sort();
+      },
+    );
+    return lists;
+  }, [customExercises, removedExercises]);
+
+  const handleResetConfirm = async () => {
+    await resetWeekly("tasks");
+    setShowResetConfirm(false);
+  };
 
   return (
     <div className="animate-in fade-in zoom-in-95 duration-300 space-y-6">
@@ -372,7 +901,7 @@ const WeeklyTraining: React.FC<WeeklyTrainingProps> = ({
             </p>
           </div>
           <button
-            onClick={() => resetWeekly("tasks")}
+            onClick={() => setShowResetConfirm(true)}
             className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-rose-400 transition-colors bg-slate-800 border border-slate-700 hover:border-rose-400/30 px-4 py-2.5 rounded-xl"
           >
             <RotateCcw className="w-3.5 h-3.5" /> Reset Week
@@ -389,7 +918,7 @@ const WeeklyTraining: React.FC<WeeklyTrainingProps> = ({
             className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
               selectedDay === day
                 ? "bg-blue-600 text-white shadow-md shadow-blue-200"
-                : "bg-white text-slate-500 hover:bg-slate-50 border border-slate-200 hover:text-slate-900"
+                : "bg-white text-slate-500 hover:bg-slate-100 border border-slate-200 hover:text-slate-900"
             }`}
           >
             {day}
@@ -408,8 +937,30 @@ const WeeklyTraining: React.FC<WeeklyTrainingProps> = ({
             setWorkoutDetails((prev) => ({ ...prev, [d]: data }))
           }
           onSave={updateWorkoutDetail}
+          copiedDay={copiedDay}
+          setCopiedDay={setCopiedDay}
+          copiedExercise={copiedExercise}
+          setCopiedExercise={setCopiedExercise}
+          exerciseLists={exerciseLists}
+          addCustomExercise={addCustomExercise}
         />
       </div>
+
+      <ConfirmModal
+        isOpen={showResetConfirm}
+        title="Reset Weekly Training"
+        message="Are you sure you want to clear all workouts for the week? This action cannot be undone."
+        onConfirm={handleResetConfirm}
+        onCancel={() => setShowResetConfirm(false)}
+      />
+
+      {Object.entries(exerciseLists).map(([key, list]) => (
+        <datalist key={key} id={`library-${key}`}>
+          {list.map((ex) => (
+            <option key={ex} value={ex} />
+          ))}
+        </datalist>
+      ))}
     </div>
   );
 };

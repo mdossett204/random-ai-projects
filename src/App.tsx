@@ -22,7 +22,10 @@ import Header from "./components/Header";
 import LoginView from "./components/LoginView";
 import Navigation from "./components/Navigation";
 import DailyVitals from "./components/DailyVitals";
-import WeeklyTraining, { DayWorkout } from "./components/WeeklyTraining";
+import WeeklyTraining, {
+  DayWorkout,
+  Exercise,
+} from "./components/WeeklyTraining";
 import PlantTracker from "./components/PlantTracker";
 import FoodLibrary from "./components/FoodLibrary";
 import ExerciseLibrary from "./components/ExerciseLibrary";
@@ -32,6 +35,7 @@ import {
   defaultMobility,
   DailyData,
 } from "./data/constants";
+import { normalizeItem } from "./utils/textUtils";
 
 // Global window augmentation for Firebase config
 declare global {
@@ -87,6 +91,10 @@ const App: React.FC = () => {
   const [removedExercises, setRemovedExercises] = useState<
     Record<string, string[]>
   >({});
+  const [clipboard, setClipboard] = useState<{
+    day: DayWorkout | null;
+    exercise: Exercise | null;
+  }>({ day: null, exercise: null });
 
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -154,6 +162,10 @@ const App: React.FC = () => {
       setDailyData(defaultDailyData);
       setWeeklyPlants([]);
       setWorkoutDetails({});
+      setCustomFoods({});
+      setRemovedFoods({});
+      setCustomExercises({});
+      setRemovedExercises({});
       setActiveTab("daily");
     } catch (err) {
       console.error("Logout failed:", err);
@@ -250,11 +262,32 @@ const App: React.FC = () => {
       (err) => console.error("Library Sync Error:", err),
     );
 
+    const clipboardRef = doc(
+      db,
+      "artifacts",
+      appId,
+      "users",
+      user.uid,
+      "tracking",
+      "clipboard",
+    );
+    const unsubClipboard = onSnapshot(
+      clipboardRef,
+      (s) => {
+        setClipboard(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          s.exists() ? (s.data() as any) : { day: null, exercise: null },
+        );
+      },
+      (err) => console.error("Clipboard Sync Error:", err),
+    );
+
     return () => {
       unsubDaily();
       unsubPlants();
       unsubDetails();
       unsubLibrary();
+      unsubClipboard();
     };
   }, [user, datestamp]);
 
@@ -289,14 +322,12 @@ const App: React.FC = () => {
   };
 
   const addPlant = async (p: string) => {
-    const rawInput = p.trim();
-    if (!user || !rawInput) return;
-    if (
-      weeklyPlants.some(
-        (existing) => existing.toLowerCase() === rawInput.toLowerCase(),
-      )
-    )
-      return;
+    if (!user) return;
+    const item = normalizeItem(p);
+    if (!item || weeklyPlants.some((i) => normalizeItem(i) === item)) return;
+
+    setWeeklyPlants((prev) => [...prev, item]);
+
     const plantRef = doc(
       db,
       "artifacts",
@@ -306,11 +337,12 @@ const App: React.FC = () => {
       "tracking",
       "weeklyPlants",
     );
-    await setDoc(plantRef, { list: arrayUnion(rawInput) }, { merge: true });
+    await setDoc(plantRef, { list: arrayUnion(item) }, { merge: true });
   };
 
   const removePlant = async (p: string) => {
     if (!user) return;
+    const item = normalizeItem(p);
     const plantRef = doc(
       db,
       "artifacts",
@@ -320,7 +352,7 @@ const App: React.FC = () => {
       "tracking",
       "weeklyPlants",
     );
-    await setDoc(plantRef, { list: arrayRemove(p) }, { merge: true });
+    await setDoc(plantRef, { list: arrayRemove(p, item) }, { merge: true });
   };
 
   const resetWeekly = async (type: "tasks" | "plants") => {
@@ -350,17 +382,25 @@ const App: React.FC = () => {
     }
   };
 
-  const addCustomFood = async (category: string, item: string) => {
+  const addCustomFood = async (category: string, rawItem: string) => {
     if (!user) return;
+    const item = normalizeItem(rawItem);
+    if (!item) return;
     const updated = { ...customFoods };
     const removed = { ...removedFoods };
     if (removed[category]) {
-      removed[category] = removed[category].filter((i) => i !== item);
+      removed[category] = removed[category].filter(
+        (i) => normalizeItem(i) !== item,
+      );
     }
     if (!updated[category]) updated[category] = [];
-    if (!updated[category].includes(item)) {
+    if (!updated[category].some((i) => normalizeItem(i) === item)) {
       updated[category] = [...updated[category], item];
     }
+
+    setCustomFoods(updated);
+    setRemovedFoods(removed);
+
     const ref = doc(
       db,
       "artifacts",
@@ -377,17 +417,25 @@ const App: React.FC = () => {
     );
   };
 
-  const removeCustomFood = async (category: string, item: string) => {
+  const removeCustomFood = async (category: string, rawItem: string) => {
     if (!user) return;
+    const item = normalizeItem(rawItem);
+    if (!item) return;
     const updated = { ...customFoods };
     const removed = { ...removedFoods };
     if (updated[category]) {
-      updated[category] = updated[category].filter((i) => i !== item);
+      updated[category] = updated[category].filter(
+        (i) => normalizeItem(i) !== item,
+      );
     }
     if (!removed[category]) removed[category] = [];
-    if (!removed[category].includes(item)) {
+    if (!removed[category].some((i) => normalizeItem(i) === item)) {
       removed[category] = [...removed[category], item];
     }
+
+    setCustomFoods(updated);
+    setRemovedFoods(removed);
+
     const ref = doc(
       db,
       "artifacts",
@@ -404,17 +452,25 @@ const App: React.FC = () => {
     );
   };
 
-  const addCustomExercise = async (category: string, item: string) => {
+  const addCustomExercise = async (category: string, rawItem: string) => {
     if (!user) return;
+    const item = normalizeItem(rawItem);
+    if (!item) return;
     const updated = { ...customExercises };
     const removed = { ...removedExercises };
     if (removed[category]) {
-      removed[category] = removed[category].filter((i) => i !== item);
+      removed[category] = removed[category].filter(
+        (i) => normalizeItem(i) !== item,
+      );
     }
     if (!updated[category]) updated[category] = [];
-    if (!updated[category].includes(item)) {
+    if (!updated[category].some((i) => normalizeItem(i) === item)) {
       updated[category] = [...updated[category], item];
     }
+
+    setCustomExercises(updated);
+    setRemovedExercises(removed);
+
     const ref = doc(
       db,
       "artifacts",
@@ -431,17 +487,25 @@ const App: React.FC = () => {
     );
   };
 
-  const removeCustomExercise = async (category: string, item: string) => {
+  const removeCustomExercise = async (category: string, rawItem: string) => {
     if (!user) return;
+    const item = normalizeItem(rawItem);
+    if (!item) return;
     const updated = { ...customExercises };
     const removed = { ...removedExercises };
     if (updated[category]) {
-      updated[category] = updated[category].filter((i) => i !== item);
+      updated[category] = updated[category].filter(
+        (i) => normalizeItem(i) !== item,
+      );
     }
     if (!removed[category]) removed[category] = [];
-    if (!removed[category].includes(item)) {
+    if (!removed[category].some((i) => normalizeItem(i) === item)) {
       removed[category] = [...removed[category], item];
     }
+
+    setCustomExercises(updated);
+    setRemovedExercises(removed);
+
     const ref = doc(
       db,
       "artifacts",
@@ -456,6 +520,22 @@ const App: React.FC = () => {
       { exercises: updated, removedExercises: removed },
       { merge: true },
     );
+  };
+
+  const updateClipboard = async (
+    updates: Partial<{ day: DayWorkout | null; exercise: Exercise | null }>,
+  ) => {
+    if (!user) return;
+    const clipboardRef = doc(
+      db,
+      "artifacts",
+      appId,
+      "users",
+      user.uid,
+      "tracking",
+      "clipboard",
+    );
+    await setDoc(clipboardRef, updates, { merge: true });
   };
 
   if (loading)
@@ -506,6 +586,11 @@ const App: React.FC = () => {
               setWorkoutDetails={setWorkoutDetails}
               updateWorkoutDetail={updateWorkoutDetail}
               resetWeekly={resetWeekly}
+              customExercises={customExercises}
+              removedExercises={removedExercises}
+              clipboard={clipboard}
+              updateClipboard={updateClipboard}
+              addCustomExercise={addCustomExercise}
             />
           )}
 
@@ -516,6 +601,8 @@ const App: React.FC = () => {
               resetWeekly={resetWeekly}
               addPlant={addPlant}
               removePlant={removePlant}
+              customFoods={customFoods}
+              removedFoods={removedFoods}
             />
           )}
 

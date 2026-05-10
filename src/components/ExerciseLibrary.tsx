@@ -35,6 +35,11 @@ const categoryColors: Record<
     text: "text-violet-700",
     dot: "bg-violet-500",
   },
+  "Mobility Training": {
+    bg: "bg-teal-50",
+    text: "text-teal-700",
+    dot: "bg-teal-500",
+  },
 };
 
 const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
@@ -54,8 +59,8 @@ const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
   ]);
   allCategories.forEach((cat) => {
     const defaults = (exerciseLibrary[cat] || []).map(normalizeItem);
-    const customs = customExercises[cat] || [];
-    const removed = removedExercises[cat] || [];
+    const customs = (customExercises[cat] || []).map(normalizeItem);
+    const removed = (removedExercises[cat] || []).map(normalizeItem);
 
     combinedLibrary[cat] = Array.from(new Set([...defaults, ...customs]))
       .filter((i) => !removed.includes(i))

@@ -1,5 +1,4 @@
 // src/data/constants.ts
-import { normalizeItem } from "../utils/textUtils";
 
 export interface Rituals {
   fishOil: boolean;
@@ -82,25 +81,32 @@ export const foodLibrary: Record<string, string[]> = {
     "carrot",
     "cauliflower",
     "celery",
+    "collard",
     "endive",
+    "escarole",
+    "fennel",
+    "frisee",
     "garlic",
-    "heart of palm",
+    "hearts of palm",
+    "kale",
     "lettuce",
+    "mizuna",
     "mushroom",
-    "nutritional yeast",
+    "mustard green",
     "okra",
-    "olive",
     "radicchio",
     "radish",
     "red onion",
     "seaweed",
+    "spinach",
     "spring mix",
     "sweet potato",
+    "swiss chard",
   ],
   Fruits: [
     "apple",
     "avocado",
-    "black cherry",
+    "cherry",
     "blackberry",
     "blueberry",
     "coconut",
@@ -111,7 +117,10 @@ export const foodLibrary: Record<string, string[]> = {
     "lemon",
     "lime",
     "mango",
+    "nectarin",
     "orange",
+    "olive",
+    "peach",
     "pear",
     "pomegranate",
     "raspberry",
@@ -119,11 +128,14 @@ export const foodLibrary: Record<string, string[]> = {
   ],
   Fermented: ["kimchi", "kombucha", "miso", "natto", "sauerkraut", "vinegar"],
   "Nuts/Seeds": [
+    "almond",
     "brazil nut",
     "chia seed",
     "flax seed",
     "hemp seed",
+    "pecan",
     "pistachio",
+    "sunflower seed",
     "walnut",
   ],
   "Animal Proteins": [
@@ -136,6 +148,7 @@ export const foodLibrary: Record<string, string[]> = {
     "pasture raised goat",
     "pasture raised lamb",
     "white fish",
+    "wild caught herring",
     "wild caught mussel",
     "wild caught oyster",
     "wild caught salmon",
@@ -148,7 +161,6 @@ export const foodLibrary: Record<string, string[]> = {
   "Healthy Fats": [
     "extra virgin olive oil",
     "grass fed beef tallow",
-    "nut/seed",
     "pasture raised butter/ghee",
   ],
   Beverages: [
@@ -157,7 +169,6 @@ export const foodLibrary: Record<string, string[]> = {
     "coffee",
     "green tea",
     "herbal tea",
-    "lemonade",
     "mint tea",
   ],
 };
@@ -196,6 +207,7 @@ export const exerciseLibrary: Record<string, string[]> = {
     "barbell squat",
     "barbell bench press",
     "calf raise",
+    "dumbbell 135 degree",
     "dumbbell single leg deadlift",
     "dumbbell bench press",
     "dumbbell bicep curl",
@@ -222,7 +234,7 @@ export const exerciseLibrary: Record<string, string[]> = {
     "cable crunch",
     "hanging leg raise",
     "lying leg raise",
-    "plank toe touches",
+    "plank toe touch",
     "plank opposite leg and arm raise",
     "russian twist",
     "seated crunch",
@@ -250,13 +262,3 @@ export const exerciseLibrary: Record<string, string[]> = {
     "shoulder wall slide",
   ],
 };
-
-export const masterPlantList: string[] = (() => {
-  const list = new Set<string>();
-  Object.values(foodLibrary).forEach((cat) =>
-    cat.forEach((item) => {
-      list.add(normalizeItem(item));
-    }),
-  );
-  return Array.from(list).sort();
-})();

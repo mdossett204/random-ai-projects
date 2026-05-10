@@ -64,8 +64,8 @@ const FoodLibrary: React.FC<FoodLibraryProps> = ({
     const defaults = (foodLibrary[cat as keyof typeof foodLibrary] || []).map(
       normalizeItem,
     );
-    const customs = customFoods[cat] || [];
-    const removed = removedFoods[cat] || [];
+    const customs = (customFoods[cat] || []).map(normalizeItem);
+    const removed = (removedFoods[cat] || []).map(normalizeItem);
 
     combinedLibrary[cat] = Array.from(new Set([...defaults, ...customs]))
       .filter((i) => !removed.includes(i))
