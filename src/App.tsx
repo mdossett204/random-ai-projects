@@ -591,6 +591,16 @@ const App: React.FC = () => {
               clipboard={clipboard}
               updateClipboard={updateClipboard}
               addCustomExercise={addCustomExercise}
+              syncDailyTraining={(isCompleted) => {
+                if (dailyData.mobility?.training !== isCompleted) {
+                  updateDaily({
+                    mobility: {
+                      ...(dailyData.mobility || defaultMobility),
+                      training: isCompleted,
+                    },
+                  });
+                }
+              }}
             />
           )}
 

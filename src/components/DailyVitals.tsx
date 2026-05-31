@@ -13,11 +13,15 @@ const CheckCard = ({
   checked,
   onClick,
   color,
+  readonly,
+  tooltip,
 }: {
   label: string;
   checked: boolean;
   onClick: () => void;
   color: "violet" | "emerald";
+  readonly?: boolean;
+  tooltip?: string;
 }) => {
   const activeClass =
     color === "violet"
@@ -31,10 +35,14 @@ const CheckCard = ({
 
   return (
     <button
-      onClick={onClick}
-      className={`w-full p-5 rounded-2xl border-2 flex flex-col justify-center items-center gap-3 transition-all duration-200 active:scale-[0.97] ${
-        checked ? activeClass : inactiveClass
-      }`}
+      onClick={readonly ? undefined : onClick}
+      disabled={readonly}
+      title={tooltip}
+      className={`w-full p-5 rounded-2xl border-2 flex flex-col justify-center items-center gap-3 transition-all duration-200 ${
+        readonly
+          ? "cursor-help opacity-90"
+          : "active:scale-[0.97] cursor-pointer"
+      } ${checked ? activeClass : inactiveClass}`}
     >
       {checked ? (
         <CheckCircle2 className="w-8 h-8" />
@@ -126,7 +134,14 @@ const DailyVitals: React.FC<DailyVitalsProps> = ({
             </p>
           </div>
           <button
-            onClick={() => updateDaily({ mobility: defaultDailyData.mobility })}
+            onClick={() =>
+              updateDaily({
+                mobility: {
+                  ...defaultDailyData.mobility,
+                  training: dailyData.mobility?.training || false,
+                },
+              })
+            }
             className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-slate-400 hover:text-emerald-500 transition-colors"
           >
             <RotateCcw className="w-3 h-3" /> Reset
@@ -138,14 +153,21 @@ const DailyVitals: React.FC<DailyVitalsProps> = ({
               key={item.key}
               label={item.label}
               checked={!!dailyData.mobility?.[item.key]}
-              onClick={() =>
+              readonly={item.key === "training"}
+              tooltip={
+                item.key === "training"
+                  ? "Automatically tracked via the Weekly Training tab"
+                  : undefined
+              }
+              onClick={() => {
+                if (item.key === "training") return;
                 updateDaily({
                   mobility: {
                     ...dailyData.mobility,
                     [item.key]: !dailyData.mobility?.[item.key],
                   },
-                })
-              }
+                });
+              }}
               color="emerald"
             />
           ))}

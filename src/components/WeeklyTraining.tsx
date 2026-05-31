@@ -15,6 +15,7 @@ import {
   X,
   CheckCircle,
   Circle,
+  ArrowLeftRight,
 } from "lucide-react";
 import { exerciseLibrary } from "../data/constants";
 import { normalizeItem } from "../utils/textUtils";
@@ -25,6 +26,7 @@ export interface WorkoutSet {
   reps?: string;
   duration?: string;
   durationUnit?: "min" | "sec";
+  completed?: boolean;
 }
 
 export interface Exercise {
@@ -52,6 +54,7 @@ const emptySet = (): WorkoutSet => ({
   reps: "",
   duration: "",
   durationUnit: "min",
+  completed: false,
 });
 
 const emptyExercise = (type: Exercise["type"] = "strength"): Exercise => ({
@@ -106,6 +109,7 @@ const normalizeSavedExercises = (
             reps: ex.rep || "",
             duration: ex.duration || "",
             durationUnit: "min",
+            completed: ex.completed || false,
           },
         ],
       }),
@@ -127,6 +131,7 @@ interface WeeklyTrainingProps {
     updates: Partial<{ day: DayWorkout | null; exercise: Exercise | null }>,
   ) => Promise<void>;
   addCustomExercise?: (category: string, item: string) => Promise<void>;
+  syncDailyTraining?: (isCompleted: boolean) => void;
 }
 
 interface ConfirmModalProps {
@@ -174,6 +179,78 @@ const ConfirmModal = ({
   );
 };
 
+interface SwapDayModalProps {
+  isOpen: boolean;
+  currentDay: string;
+  days: string[];
+  onConfirm: (targetDay: string) => void;
+  onCancel: () => void;
+}
+
+const SwapDayModal = ({
+  isOpen,
+  currentDay,
+  days,
+  onConfirm,
+  onCancel,
+}: SwapDayModalProps) => {
+  const [selectedTarget, setSelectedTarget] = useState("");
+
+  const available = days.filter((d) => d !== currentDay);
+  const activeTarget = selectedTarget || available[0] || "";
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl p-6 shadow-xl max-w-sm w-full animate-in zoom-in-95 duration-200">
+        <div className="flex items-center gap-3 text-violet-600 mb-4">
+          <ArrowLeftRight className="w-6 h-6" />
+          <h3 className="font-black text-lg">Swap Day</h3>
+        </div>
+        <p className="text-slate-600 font-medium mb-4 text-base">
+          Select a day to swap workouts with <strong>{currentDay}</strong>:
+        </p>
+        <div className="grid grid-cols-2 gap-2 mb-6">
+          {available.map((d) => (
+            <button
+              key={d}
+              onClick={() => setSelectedTarget(d)}
+              className={`p-3 rounded-xl text-base font-bold transition-all border-2 ${
+                activeTarget === d
+                  ? "bg-violet-50 border-violet-500 text-violet-700"
+                  : "bg-slate-50 border-transparent text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={() => {
+              setSelectedTarget("");
+              onCancel();
+            }}
+            className="px-4 py-2 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-100 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onConfirm(activeTarget);
+              setSelectedTarget("");
+            }}
+            className="px-4 py-2 rounded-xl text-sm font-black text-white bg-violet-600 hover:bg-violet-700 transition-colors shadow-md shadow-violet-200"
+          >
+            Swap
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const CATEGORY_MAP: Record<string, string> = {
   cardio: "Cardio Exercises",
   strength: "Resistance Training",
@@ -194,6 +271,9 @@ interface DayCardProps {
   setCopiedExercise: (e: Exercise | null) => void;
   exerciseLists: Record<string, string[]>;
   addCustomExercise?: (category: string, item: string) => Promise<void>;
+  days: string[];
+  onSwap: (targetDay: string, currentDayData: DayWorkout) => Promise<void>;
+  syncDailyTraining?: (isCompleted: boolean) => void;
 }
 
 const DayCard = ({
@@ -208,6 +288,9 @@ const DayCard = ({
   setCopiedExercise,
   exerciseLists,
   addCustomExercise,
+  days,
+  onSwap,
+  syncDailyTraining,
 }: DayCardProps) => {
   const [localData, setLocalData] = useState<DayWorkout>(() => ({
     title: data?.title || defaultTitle,
@@ -222,6 +305,9 @@ const DayCard = ({
   const [showCopyFeedback, setShowCopyFeedback] = useState(false);
   const [showClearDayConfirm, setShowClearDayConfirm] = useState(false);
   const [showPasteDayConfirm, setShowPasteDayConfirm] = useState(false);
+  const [showSwapModal, setShowSwapModal] = useState(false);
+  const [showUncheckAllConfirm, setShowUncheckAllConfirm] = useState(false);
+  const [scrollToExercise, setScrollToExercise] = useState<string | null>(null);
 
   // Safety mechanism to guarantee data saves to Firebase if you immediately switch tabs
   // before the 1-second debounce timeout finishes.
@@ -250,6 +336,42 @@ const DayCard = ({
       additionalNotes: data?.additionalNotes || "",
     });
   }, [data, defaultTitle]);
+
+  const prevCompletedRef = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    const today = new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(
+      new Date(),
+    );
+    if (day !== today || !syncDailyTraining) return;
+
+    const hasExercises = localData.exercises.length > 0;
+    const allCompleted =
+      hasExercises && localData.exercises.every((ex) => ex.completed);
+
+    if (
+      prevCompletedRef.current !== null &&
+      prevCompletedRef.current !== allCompleted
+    ) {
+      syncDailyTraining(allCompleted);
+    }
+
+    prevCompletedRef.current = allCompleted;
+  }, [localData.exercises, day, syncDailyTraining]);
+
+  // Smoothly scroll to the target exercise after it has been added or moved
+  useEffect(() => {
+    if (scrollToExercise) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`exercise-${scrollToExercise}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+        setScrollToExercise(null);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [scrollToExercise, localData.exercises]);
 
   const handleChange = (updater: (prev: DayWorkout) => DayWorkout) => {
     const newData = updater(localData);
@@ -281,7 +403,7 @@ const DayCard = ({
       ...ex,
       id: generateId(),
       completed: false,
-      sets: ex.sets.map((s) => ({ ...s, id: generateId() })),
+      sets: ex.sets.map((s) => ({ ...s, id: generateId(), completed: false })),
     }));
     handleChange((prev) => ({
       ...prev,
@@ -302,20 +424,47 @@ const DayCard = ({
     setShowClearDayConfirm(false);
   };
 
+  const handleUncheckAll = () => {
+    handleChange((prev) => ({
+      ...prev,
+      exercises: prev.exercises.map((ex) => ({
+        ...ex,
+        completed: false,
+        sets: ex.sets.map((s) => ({ ...s, completed: false })),
+      })),
+    }));
+    setShowUncheckAllConfirm(false);
+  };
+
+  const handleConfirmSwap = async (targetDay: string) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    await onSwap(targetDay, localData);
+    setShowSwapModal(false);
+  };
+
   const addExerciseAt = (index: number, exToInsert?: Exercise) => {
+    const newId = generateId();
     handleChange((prev) => {
       const arr = [...prev.exercises];
       const newEx = exToInsert
         ? {
             ...exToInsert,
-            id: generateId(),
+            id: newId,
             completed: false,
-            sets: exToInsert.sets.map((s) => ({ ...s, id: generateId() })),
+            sets: exToInsert.sets.map((s) => ({
+              ...s,
+              id: generateId(),
+              completed: false,
+            })),
           }
-        : emptyExercise();
+        : { ...emptyExercise(), id: newId };
       arr.splice(index, 0, newEx);
       return { ...prev, exercises: arr };
     });
+    setScrollToExercise(newId);
   };
 
   const confirmRemoveExercise = () => {
@@ -329,12 +478,28 @@ const DayCard = ({
   };
 
   const moveExercise = (index: number, direction: -1 | 1) => {
+    let targetId: string | null = null;
     handleChange((prev) => {
       const arr = [...prev.exercises];
       if (index + direction < 0 || index + direction >= arr.length) return prev;
+      targetId = arr[index].id;
       const temp = arr[index];
       arr[index] = arr[index + direction];
       arr[index + direction] = temp;
+      return { ...prev, exercises: arr };
+    });
+    if (targetId) {
+      setScrollToExercise(targetId);
+    }
+  };
+
+  const toggleExerciseCompletion = (eIdx: number) => {
+    handleChange((prev) => {
+      const arr = [...prev.exercises];
+      const ex = arr[eIdx];
+      const newCompleted = !ex.completed;
+      const newSets = ex.sets.map((s) => ({ ...s, completed: newCompleted }));
+      arr[eIdx] = { ...ex, completed: newCompleted, sets: newSets };
       return { ...prev, exercises: arr };
     });
   };
@@ -363,7 +528,7 @@ const DayCard = ({
         newSet.duration = lastSet.duration;
         newSet.durationUnit = lastSet.durationUnit || "min";
       }
-      arr[eIdx] = { ...arr[eIdx], sets: [...sets, newSet] };
+      arr[eIdx] = { ...arr[eIdx], sets: [...sets, newSet], completed: false };
       return { ...prev, exercises: arr };
     });
   };
@@ -378,7 +543,17 @@ const DayCard = ({
       const arr = [...prev.exercises];
       const sets = [...arr[eIdx].sets];
       sets[sIdx] = { ...sets[sIdx], [field]: value } as WorkoutSet;
-      arr[eIdx] = { ...arr[eIdx], sets } as Exercise;
+
+      let exerciseCompleted = arr[eIdx].completed;
+      if (field === "completed") {
+        exerciseCompleted = sets.length > 0 && sets.every((s) => s.completed);
+      }
+
+      arr[eIdx] = {
+        ...arr[eIdx],
+        sets,
+        completed: exerciseCompleted,
+      } as Exercise;
       return { ...prev, exercises: arr };
     });
   };
@@ -388,7 +563,9 @@ const DayCard = ({
       const arr = [...prev.exercises];
       const sets = [...arr[eIdx].sets];
       sets.splice(sIdx, 1);
-      arr[eIdx] = { ...arr[eIdx], sets };
+      const exerciseCompleted =
+        sets.length > 0 && sets.every((s) => s.completed);
+      arr[eIdx] = { ...arr[eIdx], sets, completed: exerciseCompleted };
       return { ...prev, exercises: arr };
     });
   };
@@ -415,7 +592,7 @@ const DayCard = ({
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-lg font-bold text-center text-slate-900 focus:ring-2 focus:border-indigo-500 focus:bg-white outline-none transition-all"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <button
             onClick={handleCopyDay}
             className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-blue-600 hover:bg-blue-100 transition-colors flex-1 md:flex-auto"
@@ -435,10 +612,22 @@ const DayCard = ({
             <Clipboard className="w-4 h-4" /> Paste
           </button>
           <button
+            onClick={() => setShowSwapModal(true)}
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-violet-600 hover:bg-violet-100 transition-colors flex-1 md:flex-auto"
+          >
+            <ArrowLeftRight className="w-4 h-4" /> Swap
+          </button>
+          <button
+            onClick={() => setShowUncheckAllConfirm(true)}
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors flex-1 md:flex-auto"
+          >
+            <RotateCcw className="w-4 h-4" /> Uncheck All
+          </button>
+          <button
             onClick={() => setShowClearDayConfirm(true)}
             className="flex items-center justify-center gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-100 transition-colors flex-1 md:flex-auto"
           >
-            <RotateCcw className="w-4 h-4" /> Clear Day
+            <Trash2 className="w-4 h-4" /> Clear Day
           </button>
         </div>
       </div>
@@ -463,33 +652,33 @@ const DayCard = ({
           return (
             <div
               key={ex.id}
-              className={`border rounded-2xl overflow-hidden shadow-sm transition-all duration-300 ${
+              id={`exercise-${ex.id}`}
+              className={`border rounded-2xl shadow-sm transition-all duration-300 ${
                 ex.completed
                   ? "border-emerald-200 bg-emerald-50/40 opacity-75"
                   : "border-slate-200 bg-white"
               }`}
             >
               {/* Exercise Header */}
-              <div className="bg-slate-50 p-3 flex flex-col md:flex-row gap-3 justify-between items-start md:items-center border-b border-slate-200">
+              <div className="bg-slate-50 rounded-t-2xl p-3 flex flex-col md:flex-row gap-3 justify-between items-start md:items-center border-b border-slate-200">
                 <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full md:flex-1">
                   <button
-                    onClick={() =>
-                      updateExercise(index, "completed", !ex.completed)
-                    }
-                    className={`flex-shrink-0 transition-colors ${
+                    onClick={() => toggleExerciseCompletion(index)}
+                    title={ex.completed ? "Mark incomplete" : "Mark complete"}
+                    className={`group relative flex-shrink-0 transition-colors ${
                       ex.completed
                         ? "text-emerald-500"
-                        : "text-slate-300 hover:text-emerald-400"
+                        : "text-slate-300 hover:text-emerald-500"
                     }`}
-                    title={
-                      ex.completed ? "Mark as incomplete" : "Mark as complete"
-                    }
                   >
                     {ex.completed ? (
                       <CheckCircle className="w-6 h-6 fill-emerald-100" />
                     ) : (
                       <Circle className="w-6 h-6" />
                     )}
+                    <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max rounded bg-slate-800 px-2 py-1 text-[10px] font-bold text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-active:opacity-100 z-[100]">
+                      {ex.completed ? "Mark incomplete" : "Mark complete"}
+                    </span>
                   </button>
                   <select
                     value={ex.type}
@@ -549,25 +738,30 @@ const DayCard = ({
                     </>
                   )}
 
-                  <input
-                    list={`library-${ex.type}`}
-                    value={ex.name}
-                    onChange={(e) =>
-                      updateExercise(index, "name", e.target.value)
-                    }
-                    onFocus={(e) => e.target.select()}
-                    placeholder="Exercise Name..."
-                    className="flex-grow bg-white border border-slate-200 p-2.5 rounded-xl text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/50 w-full min-w-[200px]"
-                  />
-                  {ex.name && (
-                    <button
-                      onClick={() => updateExercise(index, "name", "")}
-                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors flex-shrink-0"
-                      title="Clear exercise to see full list"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
+                  <div className="relative flex-1 w-full">
+                    <input
+                      list={`library-${ex.type}`}
+                      value={ex.name}
+                      onChange={(e) =>
+                        updateExercise(index, "name", e.target.value)
+                      }
+                      onFocus={(e) => e.target.select()}
+                      placeholder="Exercise Name..."
+                      className="w-full bg-white border border-slate-200 p-2.5 pr-10 rounded-xl text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/50 min-w-[200px] text-ellipsis"
+                    />
+                    {ex.name && (
+                      <button
+                        onClick={() => updateExercise(index, "name", "")}
+                        title="Clear"
+                        className="group absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max rounded bg-slate-800 px-2 py-1 text-[10px] font-bold text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-active:opacity-100 z-[100]">
+                          Clear
+                        </span>
+                      </button>
+                    )}
+                  </div>
                   {ex.name.trim() !== "" &&
                     !exerciseLists[ex.type].some(
                       (i) => i === normalizeItem(ex.name),
@@ -588,45 +782,66 @@ const DayCard = ({
                 <div className="flex items-center gap-1 w-full md:w-auto justify-end flex-shrink-0">
                   <button
                     onClick={() => addExerciseAt(index)}
-                    title="Add Exercise Above"
-                    className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                    title="Add Above"
+                    className="group relative p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                   >
                     <Plus className="w-4 h-4" />
+                    <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max rounded bg-slate-800 px-2 py-1 text-[10px] font-bold text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-active:opacity-100 z-[100]">
+                      Add Above
+                    </span>
                   </button>
                   <button
                     disabled={index === 0}
                     onClick={() => moveExercise(index, -1)}
-                    className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg disabled:opacity-30 transition-colors"
+                    title="Move Up"
+                    className="group relative p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg disabled:opacity-30 transition-colors"
                   >
                     <ChevronUp className="w-4 h-4" />
+                    <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max rounded bg-slate-800 px-2 py-1 text-[10px] font-bold text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-active:opacity-100 z-[100]">
+                      Move Up
+                    </span>
                   </button>
                   <button
                     disabled={index === localData.exercises.length - 1}
                     onClick={() => moveExercise(index, 1)}
-                    className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg disabled:opacity-30 transition-colors"
+                    title="Move Down"
+                    className="group relative p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg disabled:opacity-30 transition-colors"
                   >
                     <ChevronDown className="w-4 h-4" />
+                    <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max rounded bg-slate-800 px-2 py-1 text-[10px] font-bold text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-active:opacity-100 z-[100]">
+                      Move Down
+                    </span>
                   </button>
                   <button
                     onClick={() => setCopiedExercise(ex)}
-                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="Copy Exercise"
+                    title="Copy"
+                    className="group relative p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                   >
                     <Copy className="w-4 h-4" />
+                    <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max rounded bg-slate-800 px-2 py-1 text-[10px] font-bold text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-active:opacity-100 z-[100]">
+                      Copy
+                    </span>
                   </button>
                   <button
                     disabled={!copiedExercise}
                     onClick={() => addExerciseAt(index + 1, copiedExercise!)}
-                    className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg disabled:opacity-30 transition-colors"
                     title="Paste Below"
+                    className="group relative p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg disabled:opacity-30 transition-colors"
                   >
                     <Clipboard className="w-4 h-4" />
+                    <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max rounded bg-slate-800 px-2 py-1 text-[10px] font-bold text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-active:opacity-100 z-[100]">
+                      Paste Below
+                    </span>
                   </button>
                   <button
                     onClick={() => setDeleteExerciseIndex(index)}
-                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                    title="Delete"
+                    className="group relative p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
+                    <span className="pointer-events-none absolute bottom-full right-0 md:left-1/2 md:-translate-x-1/2 mb-2 w-max rounded bg-slate-800 px-2 py-1 text-[10px] font-bold text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-active:opacity-100 z-[100]">
+                      Delete
+                    </span>
                   </button>
                 </div>
               </div>
@@ -677,8 +892,26 @@ const DayCard = ({
                     key={set.id}
                     className="grid grid-cols-12 gap-2 items-center"
                   >
-                    <div className="col-span-2 md:col-span-1 text-center text-xs font-bold text-slate-400">
-                      {sIdx + 1}
+                    <div className="col-span-2 md:col-span-1 flex items-center justify-center gap-1.5">
+                      <button
+                        onClick={() =>
+                          updateSet(index, sIdx, "completed", !set.completed)
+                        }
+                        className={`transition-colors ${
+                          set.completed
+                            ? "text-emerald-500"
+                            : "text-slate-300 hover:text-emerald-400"
+                        }`}
+                      >
+                        {set.completed ? (
+                          <CheckCircle className="w-4 h-4 fill-emerald-100" />
+                        ) : (
+                          <Circle className="w-4 h-4" />
+                        )}
+                      </button>
+                      <span className="text-center text-xs font-bold text-slate-400">
+                        {sIdx + 1}
+                      </span>
                     </div>
                     {showWeight && (
                       <div
@@ -751,9 +984,13 @@ const DayCard = ({
                     <div className="col-span-2 md:col-span-1 flex justify-center">
                       <button
                         onClick={() => removeSet(index, sIdx)}
-                        className="p-2 text-slate-300 hover:text-rose-500 rounded-lg transition-colors"
+                        title="Delete Set"
+                        className="group relative p-2 text-slate-300 hover:text-rose-500 rounded-lg transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
+                        <span className="pointer-events-none absolute bottom-full mb-1 right-0 md:left-1/2 md:-translate-x-1/2 w-max rounded bg-slate-800 px-2 py-1 text-[10px] font-bold text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-active:opacity-100 z-[100]">
+                          Delete Set
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -824,6 +1061,23 @@ const DayCard = ({
         onConfirm={handleClearDay}
         onCancel={() => setShowClearDayConfirm(false)}
       />
+
+      <ConfirmModal
+        isOpen={showUncheckAllConfirm}
+        title={`Uncheck All`}
+        message={`Are you sure you want to mark all exercises as incomplete for ${day}?`}
+        onConfirm={handleUncheckAll}
+        onCancel={() => setShowUncheckAllConfirm(false)}
+        confirmText="Uncheck All"
+      />
+
+      <SwapDayModal
+        isOpen={showSwapModal}
+        currentDay={day}
+        days={days}
+        onConfirm={handleConfirmSwap}
+        onCancel={() => setShowSwapModal(false)}
+      />
     </div>
   );
 };
@@ -838,6 +1092,7 @@ const WeeklyTraining: React.FC<WeeklyTrainingProps> = ({
   clipboard = { day: null, exercise: null },
   updateClipboard,
   addCustomExercise,
+  syncDailyTraining,
 }) => {
   const days = [
     "Monday",
@@ -848,8 +1103,15 @@ const WeeklyTraining: React.FC<WeeklyTrainingProps> = ({
     "Saturday",
     "Sunday",
   ];
-  const [selectedDay, setSelectedDay] = useState("Monday");
+  const [selectedDay, setSelectedDay] = useState(() => {
+    const today = new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(
+      new Date(),
+    );
+    return days.includes(today) ? today : "Monday";
+  });
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showUncheckAllWeekConfirm, setShowUncheckAllWeekConfirm] =
+    useState(false);
 
   const copiedDay = clipboard.day;
   const copiedExercise = clipboard.exercise;
@@ -886,12 +1148,49 @@ const WeeklyTraining: React.FC<WeeklyTrainingProps> = ({
     setShowResetConfirm(false);
   };
 
+  const handleUncheckAllWeekConfirm = async () => {
+    const newDetails = { ...workoutDetails };
+    const updatePromises: Promise<void>[] = [];
+
+    for (const day of Object.keys(newDetails)) {
+      let dayChanged = false;
+      const updatedExercises = (newDetails[day].exercises || []).map((ex) => {
+        let setChanged = false;
+        const updatedSets = ex.sets.map((s) => {
+          if (s.completed) {
+            setChanged = true;
+            return { ...s, completed: false };
+          }
+          return s;
+        });
+
+        if (ex.completed || setChanged) {
+          dayChanged = true;
+          return { ...ex, completed: false, sets: updatedSets };
+        }
+        return ex;
+      });
+
+      if (dayChanged) {
+        newDetails[day] = {
+          ...newDetails[day],
+          exercises: updatedExercises,
+        };
+        updatePromises.push(updateWorkoutDetail(day, newDetails[day]));
+      }
+    }
+
+    setWorkoutDetails(newDetails);
+    await Promise.all(updatePromises);
+    setShowUncheckAllWeekConfirm(false);
+  };
+
   return (
     <div className="animate-in fade-in zoom-in-95 duration-300 space-y-6">
       {/* Header card */}
       <div className="bg-slate-900 rounded-3xl p-8 border border-slate-700/50 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -translate-y-1/3 translate-x-1/3 blur-3xl pointer-events-none" />
-        <div className="relative flex justify-between items-center">
+        <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h2 className="text-2xl font-black text-white flex items-center gap-2 mb-1">
               <Calendar className="w-6 h-6 text-blue-400" /> Weekly Training
@@ -900,12 +1199,20 @@ const WeeklyTraining: React.FC<WeeklyTrainingProps> = ({
               Log your workouts for the week
             </p>
           </div>
-          <button
-            onClick={() => setShowResetConfirm(true)}
-            className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-rose-400 transition-colors bg-slate-800 border border-slate-700 hover:border-rose-400/30 px-4 py-2.5 rounded-xl"
-          >
-            <RotateCcw className="w-3.5 h-3.5" /> Reset Week
-          </button>
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <button
+              onClick={() => setShowUncheckAllWeekConfirm(true)}
+              className="flex items-center justify-center gap-2 text-xs font-bold text-slate-400 hover:text-amber-400 transition-colors bg-slate-800 border border-slate-700 hover:border-amber-400/30 px-4 py-2.5 rounded-xl flex-1 md:flex-auto"
+            >
+              <RotateCcw className="w-3.5 h-3.5" /> Uncheck Week
+            </button>
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="flex items-center justify-center gap-2 text-xs font-bold text-slate-400 hover:text-rose-400 transition-colors bg-slate-800 border border-slate-700 hover:border-rose-400/30 px-4 py-2.5 rounded-xl flex-1 md:flex-auto"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Reset Week
+            </button>
+          </div>
         </div>
       </div>
 
@@ -943,6 +1250,22 @@ const WeeklyTraining: React.FC<WeeklyTrainingProps> = ({
           setCopiedExercise={setCopiedExercise}
           exerciseLists={exerciseLists}
           addCustomExercise={addCustomExercise}
+          days={days}
+          onSwap={async (targetDay, currentDayData) => {
+            const targetData = workoutDetails[targetDay] || {
+              title: "",
+              exercises: [],
+              additionalNotes: "",
+            };
+            setWorkoutDetails((prev) => ({
+              ...prev,
+              [selectedDay]: targetData,
+              [targetDay]: currentDayData,
+            }));
+            await updateWorkoutDetail(selectedDay, targetData);
+            await updateWorkoutDetail(targetDay, currentDayData);
+          }}
+          syncDailyTraining={syncDailyTraining}
         />
       </div>
 
@@ -952,6 +1275,15 @@ const WeeklyTraining: React.FC<WeeklyTrainingProps> = ({
         message="Are you sure you want to clear all workouts for the week? This action cannot be undone."
         onConfirm={handleResetConfirm}
         onCancel={() => setShowResetConfirm(false)}
+      />
+
+      <ConfirmModal
+        isOpen={showUncheckAllWeekConfirm}
+        title="Uncheck Entire Week"
+        message="Are you sure you want to mark all exercises as incomplete for the entire week?"
+        onConfirm={handleUncheckAllWeekConfirm}
+        onCancel={() => setShowUncheckAllWeekConfirm(false)}
+        confirmText="Uncheck Week"
       />
 
       {Object.entries(exerciseLists).map(([key, list]) => (
